@@ -155,6 +155,14 @@ pipeline {
                     echo "Waiting for application to start..."
                     sleep 15
 
+                    # 네트워크 진단 정보
+                    echo "=== Network diagnostics ==="
+                    echo "Checking if port 3200 is listening..."
+                    netstat -tlnp | grep 3200 || ss -tlnp | grep 3200 || echo "Port check command not available"
+                    echo "Container network info:"
+                    docker inspect commu --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' || true
+                    echo "==========================="
+
                     for i in 1 2 3 4 5; do
                         echo "Health check attempt $i..."
 
@@ -165,11 +173,19 @@ pipeline {
                             exit 1
                         fi
 
-                        # HTTP 헬스체크 (localhost:3200)
-                        if curl -sf http://localhost:3200 > /dev/null; then
+                        # HTTP 헬스체크 - verbose mode for debugging
+                        echo "Attempting curl to localhost:3200..."
+                        HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 10 --max-time 15 http://localhost:3200 2>&1) || true
+                        echo "HTTP response code: $HTTP_CODE"
+
+                        if [ "$HTTP_CODE" = "200" ]; then
                             echo "Health check passed!"
                             exit 0
                         fi
+
+                        # 실패 시 상세 정보 출력
+                        echo "Curl verbose output:"
+                        curl -v --connect-timeout 5 http://localhost:3200 2>&1 | head -30 || true
 
                         echo "Attempt $i failed, retrying..."
                         sleep 5
