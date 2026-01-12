@@ -151,32 +151,34 @@ pipeline {
         // =====================
         stage('Post-deploy Health Check') {
             steps {
-                retry(5) {
-                    sh '''
-                        echo "Performing health check..."
+                sh '''
+                    echo "Waiting for application to start..."
+                    sleep 15
 
-                        # 재시도 전 잠시 대기
-                        sleep 5
+                    for i in 1 2 3 4 5; do
+                        echo "Health check attempt $i..."
 
                         # 컨테이너 상태 확인
-                        if ! docker ps -q -f name=${DOCKER_CONTAINER} | grep -q .; then
+                        if ! docker ps -q -f name=commu | grep -q .; then
                             echo "ERROR: Container is not running!"
-                            docker logs ${DOCKER_CONTAINER} --tail 50
+                            docker logs commu --tail 50
                             exit 1
                         fi
 
                         # HTTP 헬스체크 (localhost:3200)
-                        HEALTH_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3200 || echo "000")
-
-                        if [ "$HEALTH_STATUS" = "200" ]; then
-                            echo "Health check passed (HTTP $HEALTH_STATUS)"
-                        else
-                            echo "Health check failed (HTTP $HEALTH_STATUS)"
-                            docker logs ${DOCKER_CONTAINER} --tail 30
-                            exit 1
+                        if curl -sf http://localhost:3200 > /dev/null; then
+                            echo "Health check passed!"
+                            exit 0
                         fi
-                    '''
-                }
+
+                        echo "Attempt $i failed, retrying..."
+                        sleep 5
+                    done
+
+                    echo "Health check failed after 5 attempts"
+                    docker logs commu --tail 50
+                    exit 1
+                '''
             }
         }
 
