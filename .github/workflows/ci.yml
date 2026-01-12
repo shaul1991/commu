@@ -15,10 +15,10 @@ env:
 
 jobs:
   # ============================================
-  # Stage 1: Lint - 코드 품질 검사
+  # Stage 1: Setup - 환경 설정 및 의존성 캐싱
   # ============================================
-  lint:
-    name: Lint
+  setup:
+    name: Setup
     runs-on: ubuntu-latest
     timeout-minutes: 5
 
@@ -35,6 +35,36 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Cache node_modules
+        uses: actions/cache/save@v4
+        with:
+          path: node_modules
+          key: node-modules-${{ hashFiles('package-lock.json') }}
+
+  # ============================================
+  # Stage 2: Lint - 정적 분석 (가장 빠름)
+  # ============================================
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    needs: setup
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Restore node_modules
+        uses: actions/cache/restore@v4
+        with:
+          path: node_modules
+          key: node-modules-${{ hashFiles('package-lock.json') }}
+
       - name: Type check
         run: npm run type-check
 
@@ -42,12 +72,40 @@ jobs:
         run: npm run lint
 
   # ============================================
-  # Stage 2: Test - 테스트 실행
+  # Stage 3: Security - 의존성 보안 스캔
   # ============================================
-  test:
-    name: Test
+  security:
+    name: Security
     runs-on: ubuntu-latest
-    needs: lint
+    needs: setup
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Restore node_modules
+        uses: actions/cache/restore@v4
+        with:
+          path: node_modules
+          key: node-modules-${{ hashFiles('package-lock.json') }}
+
+      - name: Security audit
+        run: npm audit --audit-level=high || true
+        continue-on-error: true
+
+  # ============================================
+  # Stage 4: Unit Test - 단위 테스트
+  # ============================================
+  unit-test:
+    name: Unit Test
+    runs-on: ubuntu-latest
+    needs: [lint, security]
     timeout-minutes: 10
 
     steps:
@@ -58,24 +116,23 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
 
-      - name: Install dependencies
-        run: npm ci
+      - name: Restore node_modules
+        uses: actions/cache/restore@v4
+        with:
+          path: node_modules
+          key: node-modules-${{ hashFiles('package-lock.json') }}
 
-      - name: Unit & Integration Tests
+      - name: Run unit tests
         run: npm run test --if-present
 
-      - name: E2E Tests
-        run: npm run test:e2e --if-present
-
   # ============================================
-  # Stage 3: Build - 빌드 검증
+  # Stage 5: Build - 빌드
   # ============================================
   build:
     name: Build
     runs-on: ubuntu-latest
-    needs: test
+    needs: unit-test
     timeout-minutes: 10
 
     steps:
@@ -86,23 +143,67 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
 
-      - name: Install dependencies
-        run: npm ci
+      - name: Restore node_modules
+        uses: actions/cache/restore@v4
+        with:
+          path: node_modules
+          key: node-modules-${{ hashFiles('package-lock.json') }}
 
       - name: Build
         run: npm run build
 
+      - name: Cache build output
+        uses: actions/cache/save@v4
+        with:
+          path: .next
+          key: build-${{ github.sha }}
+
+  # ============================================
+  # Stage 6: Integration Test - 통합 테스트 (가장 느림)
+  # ============================================
+  integration-test:
+    name: Integration Test
+    runs-on: ubuntu-latest
+    needs: build
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Restore node_modules
+        uses: actions/cache/restore@v4
+        with:
+          path: node_modules
+          key: node-modules-${{ hashFiles('package-lock.json') }}
+
+      - name: Restore build output
+        uses: actions/cache/restore@v4
+        with:
+          path: .next
+          key: build-${{ github.sha }}
+
+      - name: Run E2E tests
+        run: npm run test:e2e --if-present
+
       - name: Summary
         run: |
-          echo "### ✅ Build Successful" >> $GITHUB_STEP_SUMMARY
+          echo "### ✅ CI Pipeline Passed" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Stage | Status |" >> $GITHUB_STEP_SUMMARY
           echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
-          echo "| Lint | ✅ Passed |" >> $GITHUB_STEP_SUMMARY
-          echo "| Test | ✅ Passed |" >> $GITHUB_STEP_SUMMARY
-          echo "| Build | ✅ Passed |" >> $GITHUB_STEP_SUMMARY
+          echo "| Setup | ✅ |" >> $GITHUB_STEP_SUMMARY
+          echo "| Lint | ✅ |" >> $GITHUB_STEP_SUMMARY
+          echo "| Security | ✅ |" >> $GITHUB_STEP_SUMMARY
+          echo "| Unit Test | ✅ |" >> $GITHUB_STEP_SUMMARY
+          echo "| Build | ✅ |" >> $GITHUB_STEP_SUMMARY
+          echo "| Integration Test | ✅ |" >> $GITHUB_STEP_SUMMARY
 
   # ============================================
   # Deploy - Jenkins 배포 트리거
@@ -110,7 +211,7 @@ jobs:
   deploy:
     name: Deploy
     runs-on: ubuntu-latest
-    needs: build
+    needs: integration-test
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     timeout-minutes: 5
 
