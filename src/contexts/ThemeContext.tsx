@@ -7,6 +7,7 @@ import {
   useState,
   useCallback,
   useMemo,
+  useSyncExternalStore,
   type ReactNode,
 } from 'react';
 
@@ -54,7 +55,12 @@ export function ThemeProvider({
   const [systemTheme, setSystemTheme] = useState<ResolvedTheme>(() =>
     getSystemTheme()
   );
-  const [mounted, setMounted] = useState(false);
+  // Use useSyncExternalStore to track client-side mounting
+  const mounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false
+  );
 
   // Derive resolved theme from current theme and system preference
   const resolvedTheme = useMemo<ResolvedTheme>(() => {
@@ -63,11 +69,6 @@ export function ThemeProvider({
     }
     return theme;
   }, [theme, systemTheme]);
-
-  // Set mounted state
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   // Apply theme to document
   useEffect(() => {
