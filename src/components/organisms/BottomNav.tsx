@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import {
   Home,
   TrendingUp,
-  PlusSquare,
+  Plus,
   Bell,
   User,
   type LucideIcon,
@@ -22,7 +22,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   { href: '/', label: '홈', icon: Home },
   { href: '/trending', label: '트렌딩', icon: TrendingUp },
-  { href: '/write', label: '글쓰기', icon: PlusSquare, isAction: true },
+  { href: '/write', label: '글쓰기', icon: Plus, isAction: true },
   { href: '/notifications', label: '알림', icon: Bell },
   { href: '/profile', label: '프로필', icon: User },
 ];
@@ -45,6 +45,29 @@ export function BottomNav() {
           const isActive = pathname === item.href;
           const Icon = item.icon;
 
+          if (item.isAction) {
+            return (
+              <li key={item.href}>
+                <Link
+                  href={item.href}
+                  className={cn(
+                    'flex items-center justify-center',
+                    'w-12 h-12',
+                    'rounded-full',
+                    'bg-[var(--color-primary-500)]',
+                    'text-white',
+                    'shadow-lg',
+                    'transition-all duration-[var(--duration-fast)]',
+                    'hover:bg-[var(--color-primary-600)]',
+                    'active:scale-95'
+                  )}
+                >
+                  <Icon className="w-6 h-6" strokeWidth={2.5} />
+                </Link>
+              </li>
+            );
+          }
+
           return (
             <li key={item.href}>
               <Link
@@ -54,16 +77,14 @@ export function BottomNav() {
                   'w-16 h-12',
                   'rounded-[var(--radius-md)]',
                   'transition-colors duration-[var(--duration-fast)]',
-                  item.isAction
-                    ? 'text-[var(--color-primary-500)]'
-                    : isActive
+                  isActive
                     ? 'text-[var(--color-primary-500)]'
                     : 'text-[var(--text-tertiary)]'
                 )}
               >
                 <Icon
-                  className={cn('w-6 h-6', item.isAction && 'w-7 h-7')}
-                  strokeWidth={isActive || item.isAction ? 2.5 : 2}
+                  className="w-6 h-6"
+                  strokeWidth={isActive ? 2.5 : 2}
                 />
                 <span
                   className={cn(
