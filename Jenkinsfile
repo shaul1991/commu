@@ -136,9 +136,9 @@ pipeline {
                         # 새 컨테이너 시작
                         docker compose up -d
 
-                        # 컨테이너 시작 대기
+                        # 컨테이너 시작 대기 (Next.js 앱 준비 시간 필요)
                         echo "Waiting for container to start..."
-                        sleep 10
+                        sleep 20
 
                         echo "Deployment completed"
                     '''
@@ -151,9 +151,12 @@ pipeline {
         // =====================
         stage('Post-deploy Health Check') {
             steps {
-                retry(3) {
+                retry(5) {
                     sh '''
                         echo "Performing health check..."
+
+                        # 재시도 전 잠시 대기
+                        sleep 5
 
                         # 컨테이너 상태 확인
                         if ! docker ps -q -f name=${DOCKER_CONTAINER} | grep -q .; then
