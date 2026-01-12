@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { MainLayout } from '@/components/templates';
 import { Button, Badge } from '@/components/atoms';
-import { PenLine, Image, Link2, Hash, X, Eye, Send } from 'lucide-react';
+import { PenLine, ImageIcon, Link2, Hash, X, Eye, Send } from 'lucide-react';
 
 const channels = [
   { slug: 'general', name: '일반' },
@@ -111,7 +111,7 @@ export default function WritePage() {
             {/* Toolbar */}
             <div className="flex items-center gap-1 p-2 border-b border-[var(--border-default)]">
               <button className="p-2 hover:bg-[var(--bg-hover)] rounded-[var(--radius-md)]" title="이미지 추가">
-                <Image className="w-4 h-4 text-[var(--text-secondary)]" />
+                <ImageIcon className="w-4 h-4 text-[var(--text-secondary)]" />
               </button>
               <button className="p-2 hover:bg-[var(--bg-hover)] rounded-[var(--radius-md)]" title="링크 추가">
                 <Link2 className="w-4 h-4 text-[var(--text-secondary)]" />
