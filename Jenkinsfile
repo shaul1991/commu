@@ -62,8 +62,14 @@ pipeline {
 
                         echo "Fetching latest code..."
                         git fetch origin
+
+                        echo "Resetting local changes..."
+                        git reset --hard HEAD
+                        git clean -fd
+
+                        echo "Checking out branch: ${GIT_BRANCH}"
                         git checkout ${GIT_BRANCH}
-                        git pull origin ${GIT_BRANCH}
+                        git reset --hard origin/${GIT_BRANCH}
 
                         if [ -n "${GIT_COMMIT}" ]; then
                             echo "Checking out specific commit: ${GIT_COMMIT}"
