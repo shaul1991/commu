@@ -1,0 +1,242 @@
+pipeline {
+    agent any
+
+    environment {
+        // 프로젝트 설정
+        PROJECT_NAME = 'commu'
+        DEPLOY_PATH = '/opt/projects/commu'
+
+        // Docker 설정
+        DOCKER_IMAGE = 'commu-app'
+        DOCKER_CONTAINER = 'commu'
+
+        // 알림 설정 (선택사항)
+        SLACK_CHANNEL = '#deployments'
+    }
+
+    parameters {
+        string(name: 'GIT_COMMIT', defaultValue: '', description: 'Git commit SHA')
+        string(name: 'GIT_BRANCH', defaultValue: 'main', description: 'Git branch name')
+    }
+
+    options {
+        // 빌드 타임아웃 설정
+        timeout(time: 30, unit: 'MINUTES')
+        // 빌드 기록 유지
+        buildDiscarder(logRotator(numToKeepStr: '10'))
+        // 동시 빌드 방지
+        disableConcurrentBuilds()
+        // 타임스탬프 출력
+        timestamps()
+    }
+
+    stages {
+        // =====================
+        // Stage 1: 준비
+        // =====================
+        stage('Prepare') {
+            steps {
+                script {
+                    currentBuild.displayName = "#${BUILD_NUMBER} - ${params.GIT_BRANCH}"
+                    currentBuild.description = "Commit: ${params.GIT_COMMIT?.take(7) ?: 'latest'}"
+                }
+
+                echo "=========================================="
+                echo "프로젝트: ${PROJECT_NAME}"
+                echo "브랜치: ${params.GIT_BRANCH}"
+                echo "커밋: ${params.GIT_COMMIT}"
+                echo "=========================================="
+            }
+        }
+
+        // =====================
+        // Stage 2: 코드 체크아웃
+        // =====================
+        stage('Checkout') {
+            steps {
+                dir("${DEPLOY_PATH}") {
+                    sh '''
+                        echo "Fetching latest code..."
+                        git fetch origin
+                        git checkout ${GIT_BRANCH}
+                        git pull origin ${GIT_BRANCH}
+
+                        if [ -n "${GIT_COMMIT}" ]; then
+                            echo "Checking out specific commit: ${GIT_COMMIT}"
+                            git checkout ${GIT_COMMIT}
+                        fi
+
+                        echo "Current commit:"
+                        git log -1 --oneline
+                    '''
+                }
+            }
+        }
+
+        // =====================
+        // Stage 3: Docker 빌드
+        // =====================
+        stage('Build Docker Image') {
+            steps {
+                dir("${DEPLOY_PATH}") {
+                    sh '''
+                        echo "Building Docker image..."
+
+                        # Docker Compose로 빌드
+                        docker compose build --no-cache
+
+                        echo "Docker image built successfully"
+                    '''
+                }
+            }
+        }
+
+        // =====================
+        // Stage 4: 헬스체크 준비
+        // =====================
+        stage('Pre-deploy Health Check') {
+            steps {
+                sh '''
+                    echo "Checking current deployment status..."
+
+                    # 현재 컨테이너 상태 확인
+                    if docker ps -q -f name=${DOCKER_CONTAINER} | grep -q .; then
+                        echo "Current container is running"
+                        docker ps -f name=${DOCKER_CONTAINER}
+                    else
+                        echo "No running container found"
+                    fi
+                '''
+            }
+        }
+
+        // =====================
+        // Stage 5: 배포
+        // =====================
+        stage('Deploy') {
+            steps {
+                dir("${DEPLOY_PATH}") {
+                    sh '''
+                        echo "Deploying new version..."
+
+                        # 기존 컨테이너 중지 및 제거
+                        docker compose down --remove-orphans || true
+
+                        # 새 컨테이너 시작
+                        docker compose up -d
+
+                        # 컨테이너 시작 대기
+                        echo "Waiting for container to start..."
+                        sleep 10
+
+                        echo "Deployment completed"
+                    '''
+                }
+            }
+        }
+
+        // =====================
+        // Stage 6: 배포 후 헬스체크
+        // =====================
+        stage('Post-deploy Health Check') {
+            steps {
+                retry(3) {
+                    sh '''
+                        echo "Performing health check..."
+
+                        # 컨테이너 상태 확인
+                        if ! docker ps -q -f name=${DOCKER_CONTAINER} | grep -q .; then
+                            echo "ERROR: Container is not running!"
+                            docker logs ${DOCKER_CONTAINER} --tail 50
+                            exit 1
+                        fi
+
+                        # HTTP 헬스체크 (localhost:3200)
+                        HEALTH_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3200 || echo "000")
+
+                        if [ "$HEALTH_STATUS" = "200" ]; then
+                            echo "Health check passed (HTTP $HEALTH_STATUS)"
+                        else
+                            echo "Health check failed (HTTP $HEALTH_STATUS)"
+                            docker logs ${DOCKER_CONTAINER} --tail 30
+                            exit 1
+                        fi
+                    '''
+                }
+            }
+        }
+
+        // =====================
+        // Stage 7: 정리
+        // =====================
+        stage('Cleanup') {
+            steps {
+                sh '''
+                    echo "Cleaning up old Docker images..."
+
+                    # 사용하지 않는 이미지 정리
+                    docker image prune -f --filter "until=24h" || true
+
+                    # dangling 이미지 정리
+                    docker images -f "dangling=true" -q | xargs -r docker rmi || true
+
+                    echo "Cleanup completed"
+                '''
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "=========================================="
+            echo "배포 성공!"
+            echo "URL: https://commu.shaul.link"
+            echo "=========================================="
+
+            // Slack 알림 (선택사항)
+            // slackSend(
+            //     channel: "${SLACK_CHANNEL}",
+            //     color: 'good',
+            //     message: "✅ ${PROJECT_NAME} 배포 성공\n브랜치: ${params.GIT_BRANCH}\n커밋: ${params.GIT_COMMIT?.take(7)}\n빌드: #${BUILD_NUMBER}"
+            // )
+        }
+
+        failure {
+            echo "=========================================="
+            echo "배포 실패!"
+            echo "=========================================="
+
+            // 롤백 시도 (선택사항)
+            sh '''
+                echo "Attempting rollback..."
+                cd ${DEPLOY_PATH}
+
+                # 이전 이미지로 롤백 시도
+                docker compose down || true
+                git checkout HEAD~1 || true
+                docker compose up -d || true
+            '''
+
+            // Slack 알림 (선택사항)
+            // slackSend(
+            //     channel: "${SLACK_CHANNEL}",
+            //     color: 'danger',
+            //     message: "❌ ${PROJECT_NAME} 배포 실패\n브랜치: ${params.GIT_BRANCH}\n커밋: ${params.GIT_COMMIT?.take(7)}\n빌드: #${BUILD_NUMBER}"
+            // )
+        }
+
+        always {
+            // 빌드 결과 기록
+            script {
+                def duration = currentBuild.durationString.replace(' and counting', '')
+                echo "빌드 소요 시간: ${duration}"
+            }
+
+            // 워크스페이스 정리
+            cleanWs(cleanWhenNotBuilt: false,
+                    deleteDirs: true,
+                    disableDeferredWipeout: true,
+                    notFailBuild: true)
+        }
+    }
+}
