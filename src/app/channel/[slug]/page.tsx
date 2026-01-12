@@ -1,5 +1,5 @@
 import { MainLayout } from '@/components/templates';
-import { Button, Badge } from '@/components/atoms';
+import { Button } from '@/components/atoms';
 import { ThumbsUp, ThumbsDown, MessageCircle, Bookmark, MoreHorizontal, Users, FileText, Bell, BellOff } from 'lucide-react';
 
 // Sample channel data
