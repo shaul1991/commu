@@ -103,26 +103,7 @@ pipeline {
         }
 
         // =====================
-        // Stage 4: 헬스체크 준비
-        // =====================
-        stage('Pre-deploy Health Check') {
-            steps {
-                sh '''
-                    echo "Checking current deployment status..."
-
-                    # 현재 컨테이너 상태 확인
-                    if docker ps -q -f name=${DOCKER_CONTAINER} | grep -q .; then
-                        echo "Current container is running"
-                        docker ps -f name=${DOCKER_CONTAINER}
-                    else
-                        echo "No running container found"
-                    fi
-                '''
-            }
-        }
-
-        // =====================
-        // Stage 5: 배포
+        // Stage 4: 배포
         // =====================
         stage('Deploy') {
             steps {
@@ -136,9 +117,21 @@ pipeline {
                         # 새 컨테이너 시작
                         docker compose up -d
 
-                        # 컨테이너 시작 대기 (Next.js 앱 준비 시간 필요)
+                        # 컨테이너 시작 대기
                         echo "Waiting for container to start..."
-                        sleep 20
+                        sleep 10
+
+                        # 컨테이너 상태 확인
+                        echo "Checking container status..."
+                        if docker ps -q -f name=commu | grep -q .; then
+                            echo "Container is running"
+                            docker ps -f name=commu
+                            docker logs commu --tail 20
+                        else
+                            echo "ERROR: Container failed to start!"
+                            docker logs commu --tail 50
+                            exit 1
+                        fi
 
                         echo "Deployment completed"
                     '''
@@ -147,59 +140,7 @@ pipeline {
         }
 
         // =====================
-        // Stage 6: 배포 후 헬스체크
-        // =====================
-        stage('Post-deploy Health Check') {
-            steps {
-                sh '''
-                    echo "Waiting for application to start..."
-                    sleep 15
-
-                    # 네트워크 진단 정보
-                    echo "=== Network diagnostics ==="
-                    echo "Checking if port 3200 is listening..."
-                    netstat -tlnp | grep 3200 || ss -tlnp | grep 3200 || echo "Port check command not available"
-                    echo "Container network info:"
-                    docker inspect commu --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' || true
-                    echo "==========================="
-
-                    for i in 1 2 3 4 5; do
-                        echo "Health check attempt $i..."
-
-                        # 컨테이너 상태 확인
-                        if ! docker ps -q -f name=commu | grep -q .; then
-                            echo "ERROR: Container is not running!"
-                            docker logs commu --tail 50
-                            exit 1
-                        fi
-
-                        # HTTP 헬스체크 - verbose mode for debugging
-                        echo "Attempting curl to localhost:3200..."
-                        HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 10 --max-time 15 http://localhost:3200 2>&1) || true
-                        echo "HTTP response code: $HTTP_CODE"
-
-                        if [ "$HTTP_CODE" = "200" ]; then
-                            echo "Health check passed!"
-                            exit 0
-                        fi
-
-                        # 실패 시 상세 정보 출력
-                        echo "Curl verbose output:"
-                        curl -v --connect-timeout 5 http://localhost:3200 2>&1 | head -30 || true
-
-                        echo "Attempt $i failed, retrying..."
-                        sleep 5
-                    done
-
-                    echo "Health check failed after 5 attempts"
-                    docker logs commu --tail 50
-                    exit 1
-                '''
-            }
-        }
-
-        // =====================
-        // Stage 7: 정리
+        // Stage 5: 정리
         // =====================
         stage('Cleanup') {
             steps {
@@ -231,7 +172,7 @@ pipeline {
             echo "배포 실패!"
             echo "=========================================="
 
-            // 롤백 시도 (선택사항)
+            // 롤백 시도
             sh '''
                 echo "Attempting rollback..."
                 cd ${DEPLOY_PATH}
@@ -251,7 +192,7 @@ pipeline {
                 echo "빌드 소요 시간: ${duration}"
             }
 
-            // Jenkins 워크스페이스 정리 (deleteDir 사용)
+            // Jenkins 워크스페이스 정리
             deleteDir()
         }
     }
