@@ -20,7 +20,7 @@ jobs:
   setup:
     name: Setup
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     outputs:
       cache-key: ${{ steps.cache-key.outputs.key }}
     steps:
@@ -30,16 +30,24 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
       
       - name: Generate cache key
         id: cache-key
-        run: echo "key=node-modules-${{ hashFiles('package-lock.json') }}" >> $GITHUB_OUTPUT
+        run: echo "key=node-modules-${{ hashFiles('package.json') }}" >> $GITHUB_OUTPUT
+      
+      - name: Restore cache
+        id: cache-restore
+        uses: actions/cache/restore@v4
+        with:
+          path: node_modules
+          key: ${{ steps.cache-key.outputs.key }}
       
       - name: Install dependencies
-        run: npm ci
+        if: steps.cache-restore.outputs.cache-hit != 'true'
+        run: npm install
       
-      - name: Cache node_modules
+      - name: Save cache
+        if: steps.cache-restore.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
         with:
           path: node_modules
