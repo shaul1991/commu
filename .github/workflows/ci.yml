@@ -62,8 +62,10 @@ jobs:
         with:
           path: node_modules
           key: ${{ needs.setup.outputs.cache-key }}
-      - run: npm run type-check
-      - run: npm run lint
+      - name: Type Check
+        run: npm run type-check
+      - name: Lint
+        run: npm run lint
 
   test:
     name: Test
@@ -79,7 +81,8 @@ jobs:
         with:
           path: node_modules
           key: ${{ needs.setup.outputs.cache-key }}
-      - run: npm run test --if-present
+      - name: Run Tests
+        run: npm run test -- --reporter=verbose
 
   audit:
     name: Audit
@@ -96,14 +99,15 @@ jobs:
         with:
           path: node_modules
           key: ${{ needs.setup.outputs.cache-key }}
-      - run: npm audit --audit-level=high || true
+      - name: Security Audit
+        run: npm audit --audit-level=high || true
 
   # ============================================
   # Stage 3: Build
   # ============================================
   build:
     name: Build
-    needs: [lint, test]
+    needs: [setup, lint, test]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -115,17 +119,21 @@ jobs:
         with:
           path: node_modules
           key: ${{ needs.setup.outputs.cache-key }}
-          fail-on-cache-miss: false
-      - name: Install if cache miss
-        run: test -d node_modules || npm ci
-      - run: npm run build
+      - name: Build
+        run: npm run build
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-output
+          path: .next
+          retention-days: 1
 
   # ============================================
   # Stage 4: E2E (조건부 - main push 또는 e2e 라벨)
   # ============================================
   e2e:
     name: E2E
-    needs: build
+    needs: [setup, build]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     if: |
@@ -140,17 +148,15 @@ jobs:
         with:
           path: node_modules
           key: ${{ needs.setup.outputs.cache-key }}
-          fail-on-cache-miss: false
-      - name: Install if cache miss
-        run: test -d node_modules || npm ci
-      - run: npm run test:e2e --if-present
+      - name: Run E2E Tests
+        run: npm run test:e2e --if-present
 
   # ============================================
   # Deploy - main push 시만
   # ============================================
   deploy:
     name: Deploy
-    needs: [build, e2e]
+    needs: [setup, build, e2e]
     if: |
       always() &&
       needs.build.result == 'success' &&
@@ -162,6 +168,7 @@ jobs:
     steps:
       - name: Trigger Jenkins
         run: |
+          echo "🚀 Triggering Jenkins deployment..."
           RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" \
             -X POST \
             -H "Authorization: Bearer ${{ secrets.JENKINS_API_TOKEN }}" \
@@ -169,8 +176,8 @@ jobs:
             --data-urlencode "json={\"parameter\": [{\"name\": \"GIT_COMMIT\", \"value\": \"${{ github.sha }}\"}, {\"name\": \"GIT_BRANCH\", \"value\": \"${{ github.ref_name }}\"}]}")
           
           if [ "$RESPONSE" -eq 201 ] || [ "$RESPONSE" -eq 200 ]; then
-            echo "✅ Jenkins triggered"
+            echo "✅ Jenkins triggered successfully"
           else
-            echo "❌ Failed (HTTP $RESPONSE)"
+            echo "❌ Failed to trigger Jenkins (HTTP $RESPONSE)"
             exit 1
           fi
