@@ -1,5 +1,5 @@
 import { MainLayout } from '@/components/templates';
-import { Button, Badge } from '@/components/atoms';
+import { Button } from '@/components/atoms';
 import { Compass, Search, Users, Hash, TrendingUp } from 'lucide-react';
 import Link from 'next/link';
 
