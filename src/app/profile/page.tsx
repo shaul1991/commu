@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { MainLayout } from '@/components/templates';
 import { Button, Badge, Avatar } from '@/components/atoms';
-import { User, Calendar, MapPin, Link as LinkIcon, Edit2, ThumbsUp, MessageCircle, Bookmark, MoreHorizontal } from 'lucide-react';
+import { Calendar, MapPin, Link as LinkIcon, Edit2, ThumbsUp, MessageCircle, Bookmark, MoreHorizontal } from 'lucide-react';
 import Link from 'next/link';
 
 // Sample user data
