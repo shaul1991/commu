@@ -26,8 +26,6 @@ pipeline {
         buildDiscarder(logRotator(numToKeepStr: '10'))
         // 동시 빌드 방지
         disableConcurrentBuilds()
-        // 타임스탬프 출력
-        timestamps()
     }
 
     stages {
@@ -192,13 +190,6 @@ pipeline {
             echo "배포 성공!"
             echo "URL: https://commu.shaul.link"
             echo "=========================================="
-
-            // Slack 알림 (선택사항)
-            // slackSend(
-            //     channel: "${SLACK_CHANNEL}",
-            //     color: 'good',
-            //     message: "✅ ${PROJECT_NAME} 배포 성공\n브랜치: ${params.GIT_BRANCH}\n커밋: ${params.GIT_COMMIT?.take(7)}\n빌드: #${BUILD_NUMBER}"
-            // )
         }
 
         failure {
@@ -216,13 +207,6 @@ pipeline {
                 git checkout HEAD~1 || true
                 docker compose up -d || true
             '''
-
-            // Slack 알림 (선택사항)
-            // slackSend(
-            //     channel: "${SLACK_CHANNEL}",
-            //     color: 'danger',
-            //     message: "❌ ${PROJECT_NAME} 배포 실패\n브랜치: ${params.GIT_BRANCH}\n커밋: ${params.GIT_COMMIT?.take(7)}\n빌드: #${BUILD_NUMBER}"
-            // )
         }
 
         always {
