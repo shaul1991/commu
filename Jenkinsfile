@@ -57,6 +57,9 @@ pipeline {
                         echo "Configuring git safe directory..."
                         git config --global --add safe.directory /opt/projects/commu
 
+                        echo "Setting remote URL to HTTPS..."
+                        git remote set-url origin https://github.com/shaul1991/commu.git
+
                         echo "Fetching latest code..."
                         git fetch origin
                         git checkout ${GIT_BRANCH}
