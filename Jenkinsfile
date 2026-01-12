@@ -54,6 +54,9 @@ pipeline {
             steps {
                 dir("${DEPLOY_PATH}") {
                     sh '''
+                        echo "Configuring git safe directory..."
+                        git config --global --add safe.directory /opt/projects/commu
+
                         echo "Fetching latest code..."
                         git fetch origin
                         git checkout ${GIT_BRANCH}
@@ -190,6 +193,13 @@ pipeline {
             echo "배포 성공!"
             echo "URL: https://commu.shaul.link"
             echo "=========================================="
+
+            // Slack 알림 (선택사항)
+            // slackSend(
+            //     channel: "${SLACK_CHANNEL}",
+            //     color: 'good',
+            //     message: "✅ ${PROJECT_NAME} 배포 성공\n브랜치: ${params.GIT_BRANCH}\n커밋: ${params.GIT_COMMIT?.take(7)}\n빌드: #${BUILD_NUMBER}"
+            // )
         }
 
         failure {
@@ -201,12 +211,20 @@ pipeline {
             sh '''
                 echo "Attempting rollback..."
                 cd ${DEPLOY_PATH}
+                git config --global --add safe.directory /opt/projects/commu
 
                 # 이전 이미지로 롤백 시도
                 docker compose down || true
                 git checkout HEAD~1 || true
                 docker compose up -d || true
             '''
+
+            // Slack 알림 (선택사항)
+            // slackSend(
+            //     channel: "${SLACK_CHANNEL}",
+            //     color: 'danger',
+            //     message: "❌ ${PROJECT_NAME} 배포 실패\n브랜치: ${params.GIT_BRANCH}\n커밋: ${params.GIT_COMMIT?.take(7)}\n빌드: #${BUILD_NUMBER}"
+            // )
         }
 
         always {
