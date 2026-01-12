@@ -53,7 +53,7 @@ pipeline {
         stage('Checkout') {
             steps {
                 dir("${DEPLOY_PATH}") {
-                    sh '''
+                    sh """
                         echo "Configuring git safe directory..."
                         git config --global --add safe.directory /opt/projects/commu
 
@@ -67,18 +67,19 @@ pipeline {
                         git reset --hard HEAD
                         git clean -fd
 
-                        echo "Checking out branch: ${GIT_BRANCH}"
-                        git checkout ${GIT_BRANCH}
-                        git reset --hard origin/${GIT_BRANCH}
+                        echo "Checking out branch: ${params.GIT_BRANCH}"
+                        git checkout ${params.GIT_BRANCH} 2>/dev/null || git checkout -b ${params.GIT_BRANCH} origin/${params.GIT_BRANCH}
+                        git reset --hard origin/${params.GIT_BRANCH}
 
-                        if [ -n "${GIT_COMMIT}" ]; then
-                            echo "Checking out specific commit: ${GIT_COMMIT}"
-                            git checkout ${GIT_COMMIT}
+                        COMMIT_PARAM="${params.GIT_COMMIT}"
+                        if [ -n "\$COMMIT_PARAM" ]; then
+                            echo "Checking out specific commit: \$COMMIT_PARAM"
+                            git checkout \$COMMIT_PARAM
                         fi
 
                         echo "Current commit:"
                         git log -1 --oneline
-                    '''
+                    """
                 }
             }
         }
