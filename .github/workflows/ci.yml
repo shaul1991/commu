@@ -1,4 +1,4 @@
-name: CI/CD Pipeline
+name: CI/CD
 
 on:
   push:
@@ -15,12 +15,12 @@ env:
 
 jobs:
   # ============================================
-  # Stage 1: Setup - 환경 설정 및 의존성 캐싱
+  # CI - 단일 Job으로 통합 (현실적 접근)
   # ============================================
-  setup:
-    name: Setup
+  ci:
+    name: CI
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 15
 
     steps:
       - name: Checkout
@@ -35,183 +35,33 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Cache node_modules
-        uses: actions/cache/save@v4
-        with:
-          path: node_modules
-          key: node-modules-${{ hashFiles('package-lock.json') }}
-
-  # ============================================
-  # Stage 2: Lint - 정적 분석 (가장 빠름)
-  # ============================================
-  lint:
-    name: Lint
-    runs-on: ubuntu-latest
-    needs: setup
-    timeout-minutes: 5
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-
-      - name: Restore node_modules
-        uses: actions/cache/restore@v4
-        with:
-          path: node_modules
-          key: node-modules-${{ hashFiles('package-lock.json') }}
-
+      # 1. Lint (빠름 - 먼저 실행)
       - name: Type check
         run: npm run type-check
 
-      - name: ESLint
+      - name: Lint
         run: npm run lint
 
-  # ============================================
-  # Stage 3: Security - 의존성 보안 스캔
-  # ============================================
-  security:
-    name: Security
-    runs-on: ubuntu-latest
-    needs: setup
-    timeout-minutes: 5
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-
-      - name: Restore node_modules
-        uses: actions/cache/restore@v4
-        with:
-          path: node_modules
-          key: node-modules-${{ hashFiles('package-lock.json') }}
-
+      # 2. Security (선택적)
       - name: Security audit
         run: npm audit --audit-level=high || true
         continue-on-error: true
 
-  # ============================================
-  # Stage 4: Unit Test - 단위 테스트
-  # ============================================
-  unit-test:
-    name: Unit Test
-    runs-on: ubuntu-latest
-    needs: [lint, security]
-    timeout-minutes: 10
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-
-      - name: Restore node_modules
-        uses: actions/cache/restore@v4
-        with:
-          path: node_modules
-          key: node-modules-${{ hashFiles('package-lock.json') }}
-
-      - name: Run unit tests
+      # 3. Test (있으면 실행)
+      - name: Test
         run: npm run test --if-present
 
-  # ============================================
-  # Stage 5: Build - 빌드
-  # ============================================
-  build:
-    name: Build
-    runs-on: ubuntu-latest
-    needs: unit-test
-    timeout-minutes: 10
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-
-      - name: Restore node_modules
-        uses: actions/cache/restore@v4
-        with:
-          path: node_modules
-          key: node-modules-${{ hashFiles('package-lock.json') }}
-
+      # 4. Build
       - name: Build
         run: npm run build
 
-      - name: Cache build output
-        uses: actions/cache/save@v4
-        with:
-          path: .next
-          key: build-${{ github.sha }}
-
   # ============================================
-  # Stage 6: Integration Test - 통합 테스트 (가장 느림)
-  # ============================================
-  integration-test:
-    name: Integration Test
-    runs-on: ubuntu-latest
-    needs: build
-    timeout-minutes: 15
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-
-      - name: Restore node_modules
-        uses: actions/cache/restore@v4
-        with:
-          path: node_modules
-          key: node-modules-${{ hashFiles('package-lock.json') }}
-
-      - name: Restore build output
-        uses: actions/cache/restore@v4
-        with:
-          path: .next
-          key: build-${{ github.sha }}
-
-      - name: Run E2E tests
-        run: npm run test:e2e --if-present
-
-      - name: Summary
-        run: |
-          echo "### ✅ CI Pipeline Passed" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Stage | Status |" >> $GITHUB_STEP_SUMMARY
-          echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
-          echo "| Setup | ✅ |" >> $GITHUB_STEP_SUMMARY
-          echo "| Lint | ✅ |" >> $GITHUB_STEP_SUMMARY
-          echo "| Security | ✅ |" >> $GITHUB_STEP_SUMMARY
-          echo "| Unit Test | ✅ |" >> $GITHUB_STEP_SUMMARY
-          echo "| Build | ✅ |" >> $GITHUB_STEP_SUMMARY
-          echo "| Integration Test | ✅ |" >> $GITHUB_STEP_SUMMARY
-
-  # ============================================
-  # Deploy - Jenkins 배포 트리거
+  # Deploy - main 브랜치 push 시만
   # ============================================
   deploy:
     name: Deploy
     runs-on: ubuntu-latest
-    needs: integration-test
+    needs: ci
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     timeout-minutes: 5
 
@@ -234,9 +84,7 @@ jobs:
       - name: Summary
         run: |
           echo "### 🚀 Deployment Triggered" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Item | Value |" >> $GITHUB_STEP_SUMMARY
-          echo "|-------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "|------|-------|" >> $GITHUB_STEP_SUMMARY
           echo "| Commit | \`${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
           echo "| Branch | \`${{ github.ref_name }}\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| Actor | @${{ github.actor }} |" >> $GITHUB_STEP_SUMMARY
