@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { Search, Bell, Menu } from 'lucide-react';
-import { Button, Avatar, ThemeToggle } from '@/components/atoms';
+import { Avatar, ThemeToggle } from '@/components/atoms';
 import { cn } from '@/lib/utils';
 
 interface HeaderProps {
