@@ -6,6 +6,7 @@ import {
   useEffect,
   useState,
   useCallback,
+  useMemo,
   type ReactNode,
 } from 'react';
 
@@ -29,6 +30,15 @@ function getSystemTheme(): ResolvedTheme {
     : 'light';
 }
 
+function getInitialTheme(defaultTheme: Theme): Theme {
+  if (typeof window === 'undefined') return defaultTheme;
+  const savedTheme = localStorage.getItem(STORAGE_KEY) as Theme | null;
+  if (savedTheme && ['light', 'dark', 'system'].includes(savedTheme)) {
+    return savedTheme;
+  }
+  return defaultTheme;
+}
+
 interface ThemeProviderProps {
   children: ReactNode;
   defaultTheme?: Theme;
@@ -38,51 +48,44 @@ export function ThemeProvider({
   children,
   defaultTheme = 'system',
 }: ThemeProviderProps) {
-  const [theme, setThemeState] = useState<Theme>(defaultTheme);
-  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>('light');
+  const [theme, setThemeState] = useState<Theme>(() =>
+    getInitialTheme(defaultTheme)
+  );
+  const [systemTheme, setSystemTheme] = useState<ResolvedTheme>(() =>
+    getSystemTheme()
+  );
   const [mounted, setMounted] = useState(false);
 
-  // Load saved theme on mount
-  useEffect(() => {
-    const savedTheme = localStorage.getItem(STORAGE_KEY) as Theme | null;
-    if (savedTheme && ['light', 'dark', 'system'].includes(savedTheme)) {
-      setThemeState(savedTheme);
+  // Derive resolved theme from current theme and system preference
+  const resolvedTheme = useMemo<ResolvedTheme>(() => {
+    if (theme === 'system') {
+      return systemTheme;
     }
+    return theme;
+  }, [theme, systemTheme]);
+
+  // Set mounted state
+  useEffect(() => {
     setMounted(true);
   }, []);
 
   // Apply theme to document
   useEffect(() => {
     if (!mounted) return;
-
-    const root = document.documentElement;
-    let resolved: ResolvedTheme;
-
-    if (theme === 'system') {
-      resolved = getSystemTheme();
-    } else {
-      resolved = theme;
-    }
-
-    setResolvedTheme(resolved);
-    root.setAttribute('data-theme', resolved);
-  }, [theme, mounted]);
+    document.documentElement.setAttribute('data-theme', resolvedTheme);
+  }, [resolvedTheme, mounted]);
 
   // Listen for system theme changes
   useEffect(() => {
-    if (theme !== 'system') return;
-
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
 
     const handler = (e: MediaQueryListEvent) => {
-      const newTheme = e.matches ? 'dark' : 'light';
-      setResolvedTheme(newTheme);
-      document.documentElement.setAttribute('data-theme', newTheme);
+      setSystemTheme(e.matches ? 'dark' : 'light');
     };
 
     mediaQuery.addEventListener('change', handler);
     return () => mediaQuery.removeEventListener('change', handler);
-  }, [theme]);
+  }, []);
 
   const setTheme = useCallback((newTheme: Theme) => {
     setThemeState(newTheme);
