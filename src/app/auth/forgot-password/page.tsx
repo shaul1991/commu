@@ -57,7 +57,7 @@ export default function ForgotPasswordPage() {
             이메일이 도착하지 않으면 스팸 폴더를 확인해주세요.
           </p>
           <Link href="/auth/login">
-            <Button variant="outline" size="lg">
+            <Button variant="secondary" size="lg">
               로그인 페이지로
             </Button>
           </Link>

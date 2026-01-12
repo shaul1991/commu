@@ -4,13 +4,13 @@ import { useState, InputHTMLAttributes, forwardRef } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
 import { Input } from '@/components/atoms';
 
-interface AuthInputProps extends InputHTMLAttributes<HTMLInputElement> {
+interface AuthInputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'size'> {
   label: string;
   error?: string;
 }
 
 export const AuthInput = forwardRef<HTMLInputElement, AuthInputProps>(
-  ({ label, error, type, className, ...props }, ref) => {
+  ({ label, error, type, className, ...rest }, ref) => {
     const [showPassword, setShowPassword] = useState(false);
     const isPassword = type === 'password';
 
@@ -24,7 +24,7 @@ export const AuthInput = forwardRef<HTMLInputElement, AuthInputProps>(
             ref={ref}
             type={isPassword && showPassword ? 'text' : type}
             className={`w-full ${error ? 'border-red-500' : ''} ${className || ''}`}
-            {...props}
+            {...rest}
           />
           {isPassword && (
             <button
