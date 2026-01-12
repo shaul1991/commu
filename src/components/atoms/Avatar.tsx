@@ -5,7 +5,7 @@ import { cn, getInitials } from '@/lib/utils';
 
 export type AvatarSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl';
 
-interface AvatarProps extends Omit<ImgHTMLAttributes<HTMLImageElement>, 'size'> {
+interface AvatarProps extends Omit<ImgHTMLAttributes<HTMLImageElement>, 'size' | 'src'> {
   size?: AvatarSize;
   name?: string;
   src?: string | null;
