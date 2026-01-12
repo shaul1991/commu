@@ -1,0 +1,17 @@
+services:
+  commu:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: commu
+    restart: unless-stopped
+    ports:
+      - "3200:3000"
+    environment:
+      - NODE_ENV=production
+    networks:
+      - caddy-network
+
+networks:
+  caddy-network:
+    external: true
