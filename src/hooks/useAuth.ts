@@ -39,7 +39,8 @@ export function useAuth() {
       const response = await authApi.login(data);
 
       if (response.success && response.data) {
-        const meResponse = await authApi.getMe();
+        // 로그인 성공 후 새로 받은 토큰으로 사용자 정보 조회
+        const meResponse = await authApi.getMe(response.data.accessToken);
         if (meResponse.success && meResponse.data) {
           setLogin(meResponse.data, response.data.accessToken);
           return { success: true };
@@ -75,7 +76,8 @@ export function useAuth() {
 
   const handleOAuthCallback = useCallback(
     async (accessToken: string) => {
-      const meResponse = await authApi.getMe();
+      // OAuth 콜백으로 받은 토큰으로 사용자 정보 조회
+      const meResponse = await authApi.getMe(accessToken);
       if (meResponse.success && meResponse.data) {
         setLogin(meResponse.data, accessToken);
         return { success: true };

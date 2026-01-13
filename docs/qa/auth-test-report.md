@@ -74,7 +74,7 @@
 | 시나리오 | 기대 메시지 | 실제 메시지 | 상태 |
 |----------|-------------|-------------|------|
 | 잘못된 자격 증명 | 이메일 또는 비밀번호가 올바르지 않습니다 | 이메일 또는 비밀번호가 올바르지 않습니다 | **PASS** |
-| 미인증 계정 로그인 | 이메일 인증이 필요합니다 | 로그인에 실패했습니다 | **FAIL** |
+| 정상 로그인 | 홈으로 리다이렉트 | 홈으로 리다이렉트 | **PASS** ✅ |
 
 ---
 
@@ -105,12 +105,41 @@
 - `src/auth/auth.service.spec.ts` - 단위 테스트 존재
 - `test/auth.e2e-spec.ts` - E2E 테스트 존재 (20+ 테스트 케이스)
 
+### 로그인 버그 수정 (2026-01-14 추가)
+
+**문제**: 회원가입 후 로그인 시 "로그인에 실패했습니다" 에러 발생
+
+**원인 분석**:
+1. 로그인 API 호출 → 성공 (토큰 발급)
+2. `getMe()` API 호출 → 401 실패
+3. 토큰이 localStorage에 저장되기 **전에** `getMe()`가 호출됨
+
+**수정 내용**:
+
+1. **API 클라이언트 토큰 전달 지원** (`src/lib/api/client.ts`)
+   ```typescript
+   interface RequestConfig extends RequestInit {
+     skipAuth?: boolean;
+     token?: string; // 직접 토큰 전달 옵션 추가
+   }
+   ```
+
+2. **authApi.getMe() 토큰 파라미터 추가** (`src/lib/api/auth.ts`)
+   ```typescript
+   getMe: (token?: string): Promise<ApiResponse<User>> =>
+     apiClient.get('/auth/me', token ? { token } : undefined),
+   ```
+
+3. **useAuth 로그인 로직 수정** (`src/hooks/useAuth.ts`)
+   ```typescript
+   const meResponse = await authApi.getMe(response.data.accessToken);
+   ```
+
+**테스트 결과**: ✅ 로그인 성공 확인 (testlogin01@example.com)
+
 ### 잔여 사항 (추후 개선)
 
-1. **개발 환경 이메일 인증 스킵 옵션**
-   - 환경변수로 이메일 인증 비활성화 가능하도록
-
-2. **403 에러 응답 개선**
+1. **403 에러 응답 개선**
    - 이메일 미인증 시 명확한 에러 코드/메시지 반환
 
 ---

@@ -2,6 +2,7 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 interface RequestConfig extends RequestInit {
   skipAuth?: boolean;
+  token?: string; // 직접 토큰 전달 (로그인 직후 getMe 호출 등)
 }
 
 interface ApiError {
@@ -105,7 +106,7 @@ class ApiClient {
     endpoint: string,
     config: RequestConfig = {}
   ): Promise<ApiResponse<T>> {
-    const { skipAuth = false, ...fetchConfig } = config;
+    const { skipAuth = false, token: providedToken, ...fetchConfig } = config;
     const url = `${this.baseUrl}${endpoint}`;
 
     const headers: HeadersInit = {
@@ -114,7 +115,8 @@ class ApiClient {
     };
 
     if (!skipAuth) {
-      const token = this.getAccessToken();
+      // 직접 제공된 토큰 우선, 없으면 저장된 토큰 사용
+      const token = providedToken || this.getAccessToken();
       if (token) {
         (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`;
       }

@@ -59,8 +59,8 @@ export const authApi = {
   refresh: (): Promise<ApiResponse<TokenResponse>> =>
     apiClient.post('/auth/refresh', undefined, { skipAuth: true }),
 
-  getMe: (): Promise<ApiResponse<User>> =>
-    apiClient.get('/auth/me'),
+  getMe: (token?: string): Promise<ApiResponse<User>> =>
+    apiClient.get('/auth/me', token ? { token } : undefined),
 
   changePassword: (data: ChangePasswordRequest): Promise<ApiResponse<MessageResponse>> =>
     apiClient.post('/auth/change-password', data),
