@@ -16,7 +16,7 @@ import {
   createPost,
   updatePost,
   deletePost,
-} from '@/mocks/api';
+} from '@/lib/api/posts';
 import type { Post } from '@/types';
 import { toast } from '@/stores/uiStore';
 
