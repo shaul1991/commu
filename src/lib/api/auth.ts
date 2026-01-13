@@ -83,6 +83,9 @@ export const authApi = {
 
   getKakaoAuthUrl: (): string =>
     `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/auth/kakao`,
+
+  getGithubAuthUrl: (): string =>
+    `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/auth/github`,
 };
 
 export type {

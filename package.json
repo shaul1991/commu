@@ -13,7 +13,9 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "echo 'E2E tests not configured yet'",
-    "ci": "npm run type-check && npm run lint && npm run build"
+    "audit": "npm audit --audit-level=high || true",
+    "validate": "npm run lint && npm run test && npm run build",
+    "ci": "npm run type-check && npm run lint && npm run test && npm run audit && npm run build"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.90.16",
