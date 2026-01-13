@@ -6,10 +6,12 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 export interface User {
   id: string;
   email: string;
-  nickname?: string;
+  firstName?: string;
+  lastName?: string;
   displayName?: string;
   profileImage?: string;
-  emailVerified: boolean;
+  isEmailVerified: boolean;
+  isActive?: boolean;
 }
 
 interface AuthState {
