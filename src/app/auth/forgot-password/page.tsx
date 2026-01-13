@@ -31,7 +31,7 @@ export default function ForgotPasswordPage() {
     try {
       await authApi.forgotPassword(email);
       setIsSuccess(true);
-    } catch (error: any) {
+    } catch {
       // 보안상 이메일 존재 여부를 노출하지 않음
       setIsSuccess(true);
     }

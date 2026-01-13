@@ -93,7 +93,8 @@ interface PageProps {
 
 export default async function PostPage({ params }: PageProps) {
   // TODO: Use postId to fetch actual post data from API
-  const { id: _postId } = await params;
+  const { id: postId } = await params;
+  console.debug('Post ID:', postId);
 
   return (
     <MainLayout>

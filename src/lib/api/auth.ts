@@ -79,10 +79,10 @@ export const authApi = {
 
   // OAuth URLs
   getGoogleAuthUrl: (): string =>
-    `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1'}/auth/google`,
+    `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/auth/google`,
 
   getKakaoAuthUrl: (): string =>
-    `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1'}/auth/kakao`,
+    `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/auth/kakao`,
 };
 
 export type {

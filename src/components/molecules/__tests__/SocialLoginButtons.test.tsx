@@ -1,6 +1,5 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { SocialLoginButtons } from '../SocialLoginButtons';
-import { authApi } from '@/lib/api/auth';
 
 // Mock the auth API
 jest.mock('@/lib/api/auth', () => ({

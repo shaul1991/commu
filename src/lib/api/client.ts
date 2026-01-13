@@ -1,4 +1,4 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 interface RequestConfig extends RequestInit {
   skipAuth?: boolean;
@@ -10,7 +10,7 @@ interface ApiResponse<T> {
   error?: {
     code: string;
     message: string;
-    details?: any;
+    details?: Record<string, unknown>;
   };
 }
 
@@ -77,7 +77,7 @@ class ApiClient {
         success: true,
         data: data.data || data,
       };
-    } catch (error) {
+    } catch {
       return {
         success: false,
         error: {

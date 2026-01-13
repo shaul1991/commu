@@ -1,4 +1,4 @@
-import { renderHook, act, waitFor } from '@testing-library/react';
+import { renderHook, act } from '@testing-library/react';
 import { useAuth } from '../useAuth';
 import { authApi } from '@/lib/api/auth';
 import { useAuthStore } from '@/stores/authStore';
@@ -52,7 +52,7 @@ describe('useAuth Hook', () => {
 
       const { result } = renderHook(() => useAuth());
 
-      let loginResult: any;
+      let loginResult: { success: boolean; error?: string };
       await act(async () => {
         loginResult = await result.current.login({
           email: 'test@example.com',
@@ -73,7 +73,7 @@ describe('useAuth Hook', () => {
 
       const { result } = renderHook(() => useAuth());
 
-      let loginResult: any;
+      let loginResult: { success: boolean; error?: string };
       await act(async () => {
         loginResult = await result.current.login({
           email: 'test@example.com',
@@ -90,7 +90,7 @@ describe('useAuth Hook', () => {
 
       const { result } = renderHook(() => useAuth());
 
-      let loginResult: any;
+      let loginResult: { success: boolean; error?: string };
       await act(async () => {
         loginResult = await result.current.login({
           email: 'test@example.com',
@@ -112,7 +112,7 @@ describe('useAuth Hook', () => {
 
       const { result } = renderHook(() => useAuth());
 
-      let registerResult: any;
+      let registerResult: { success: boolean; error?: string; message?: string };
       await act(async () => {
         registerResult = await result.current.register({
           email: 'test@example.com',
@@ -133,7 +133,7 @@ describe('useAuth Hook', () => {
 
       const { result } = renderHook(() => useAuth());
 
-      let registerResult: any;
+      let registerResult: { success: boolean; error?: string; message?: string };
       await act(async () => {
         registerResult = await result.current.register({
           email: 'existing@example.com',
@@ -172,7 +172,7 @@ describe('useAuth Hook', () => {
 
       const { result } = renderHook(() => useAuth());
 
-      let callbackResult: any;
+      let callbackResult: { success: boolean };
       await act(async () => {
         callbackResult = await result.current.handleOAuthCallback('oauth-token');
       });
@@ -190,7 +190,7 @@ describe('useAuth Hook', () => {
 
       const { result } = renderHook(() => useAuth());
 
-      let callbackResult: any;
+      let callbackResult: { success: boolean };
       await act(async () => {
         callbackResult = await result.current.handleOAuthCallback('invalid-token');
       });

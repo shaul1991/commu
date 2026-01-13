@@ -8,7 +8,7 @@ import { AuthInput } from '@/components/molecules';
 import { authApi } from '@/lib/api/auth';
 
 export default function ResetPasswordPage() {
-  const router = useRouter();
+  useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get('token');
 
@@ -62,8 +62,9 @@ export default function ResetPasswordPage() {
     try {
       await authApi.resetPassword(token, formData.password);
       setIsSuccess(true);
-    } catch (error: any) {
-      if (error.response?.status === 400) {
+    } catch (error: unknown) {
+      const err = error as { response?: { status?: number } };
+      if (err.response?.status === 400) {
         setErrors({ form: '만료되었거나 이미 사용된 링크입니다. 다시 비밀번호 찾기를 진행해주세요.' });
       } else {
         setErrors({ form: '비밀번호 재설정에 실패했습니다. 다시 시도해주세요.' });

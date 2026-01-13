@@ -8,7 +8,7 @@ import { AuthInput, SocialLoginButtons } from '@/components/molecules';
 import { useAuth } from '@/hooks/useAuth';
 
 export default function RegisterPage() {
-  const router = useRouter();
+  useRouter();
   const { register } = useAuth();
   const [formData, setFormData] = useState({
     email: '',

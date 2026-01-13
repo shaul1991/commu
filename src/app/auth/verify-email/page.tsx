@@ -26,9 +26,10 @@ export default function VerifyEmailPage() {
         await authApi.verifyEmail(token);
         setStatus('success');
         setMessage('이메일 인증이 완료되었습니다!');
-      } catch (error: any) {
+      } catch (error: unknown) {
         setStatus('error');
-        if (error.response?.status === 400) {
+        const err = error as { response?: { status?: number } };
+        if (err.response?.status === 400) {
           setMessage('만료되었거나 이미 사용된 인증 링크입니다.');
         } else {
           setMessage('이메일 인증에 실패했습니다. 다시 시도해주세요.');
