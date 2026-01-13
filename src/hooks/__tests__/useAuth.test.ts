@@ -1,14 +1,28 @@
 import { renderHook, act } from '@testing-library/react';
+import { vi, Mock, MockedFunction } from 'vitest';
 import { useAuth } from '../useAuth';
 import { authApi } from '@/lib/api/auth';
 import { useAuthStore } from '@/stores/authStore';
 
 // Mock modules
-jest.mock('@/lib/api/auth');
-jest.mock('@/stores/authStore');
+vi.mock('@/lib/api/auth');
+vi.mock('@/stores/authStore');
 
-const mockAuthApi = authApi as jest.Mocked<typeof authApi>;
-const mockUseAuthStore = useAuthStore as jest.MockedFunction<typeof useAuthStore>;
+// Mock Next.js router
+const mockPush = vi.fn();
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: mockPush,
+    replace: vi.fn(),
+    prefetch: vi.fn(),
+    back: vi.fn(),
+    forward: vi.fn(),
+    refresh: vi.fn(),
+  }),
+}));
+
+const mockAuthApi = authApi as { [K in keyof typeof authApi]: Mock };
+const mockUseAuthStore = useAuthStore as MockedFunction<typeof useAuthStore>;
 
 describe('useAuth Hook', () => {
   const mockUser = {
@@ -19,22 +33,20 @@ describe('useAuth Hook', () => {
     isEmailVerified: true,
   };
 
-  const mockSetUser = jest.fn();
-  const mockSetAccessToken = jest.fn();
-  const mockLogout = jest.fn();
-  const mockSetLoading = jest.fn();
+  const mockSetLogin = vi.fn();
+  const mockSetLogout = vi.fn();
+  const mockSetLoading = vi.fn();
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
     mockUseAuthStore.mockReturnValue({
       user: null,
       accessToken: null,
       isAuthenticated: false,
       isLoading: false,
-      setUser: mockSetUser,
-      setAccessToken: mockSetAccessToken,
-      logout: mockLogout,
+      login: mockSetLogin,
+      logout: mockSetLogout,
       setLoading: mockSetLoading,
     });
   });
@@ -42,12 +54,15 @@ describe('useAuth Hook', () => {
   describe('login', () => {
     it('should login successfully with valid credentials', async () => {
       mockAuthApi.login.mockResolvedValue({
+        success: true,
         data: {
           accessToken: 'test-token',
           expiresIn: 3600,
-          user: mockUser,
         },
-        error: null,
+      });
+      mockAuthApi.getMe.mockResolvedValue({
+        success: true,
+        data: mockUser,
       });
 
       const { result } = renderHook(() => useAuth());
@@ -60,15 +75,14 @@ describe('useAuth Hook', () => {
         });
       });
 
-      expect(loginResult.success).toBe(true);
-      expect(mockSetAccessToken).toHaveBeenCalledWith('test-token');
-      expect(mockSetUser).toHaveBeenCalledWith(mockUser);
+      expect(loginResult!.success).toBe(true);
+      expect(mockSetLogin).toHaveBeenCalledWith(mockUser, 'test-token');
     });
 
     it('should return error on invalid credentials', async () => {
       mockAuthApi.login.mockResolvedValue({
-        data: null,
-        error: '이메일 또는 비밀번호가 올바르지 않습니다.',
+        success: false,
+        error: { message: '이메일 또는 비밀번호가 올바르지 않습니다.' },
       });
 
       const { result } = renderHook(() => useAuth());
@@ -81,12 +95,15 @@ describe('useAuth Hook', () => {
         });
       });
 
-      expect(loginResult.success).toBe(false);
-      expect(loginResult.error).toBe('이메일 또는 비밀번호가 올바르지 않습니다.');
+      expect(loginResult!.success).toBe(false);
+      expect(loginResult!.error).toBe('이메일 또는 비밀번호가 올바르지 않습니다.');
     });
 
     it('should handle network error', async () => {
-      mockAuthApi.login.mockRejectedValue(new Error('Network error'));
+      mockAuthApi.login.mockResolvedValue({
+        success: false,
+        error: null,
+      });
 
       const { result } = renderHook(() => useAuth());
 
@@ -98,16 +115,16 @@ describe('useAuth Hook', () => {
         });
       });
 
-      expect(loginResult.success).toBe(false);
-      expect(loginResult.error).toBe('로그인에 실패했습니다.');
+      expect(loginResult!.success).toBe(false);
+      expect(loginResult!.error).toBe('로그인에 실패했습니다.');
     });
   });
 
   describe('register', () => {
     it('should register successfully', async () => {
       mockAuthApi.register.mockResolvedValue({
+        success: true,
         data: mockUser,
-        error: null,
       });
 
       const { result } = renderHook(() => useAuth());
@@ -122,13 +139,14 @@ describe('useAuth Hook', () => {
         });
       });
 
-      expect(registerResult.success).toBe(true);
+      expect(registerResult!.success).toBe(true);
+      expect(registerResult!.message).toBe('회원가입이 완료되었습니다. 이메일을 확인해주세요.');
     });
 
     it('should return error on duplicate email', async () => {
       mockAuthApi.register.mockResolvedValue({
-        data: null,
-        error: '이미 사용 중인 이메일입니다.',
+        success: false,
+        error: { message: '이미 사용 중인 이메일입니다.' },
       });
 
       const { result } = renderHook(() => useAuth());
@@ -141,16 +159,16 @@ describe('useAuth Hook', () => {
         });
       });
 
-      expect(registerResult.success).toBe(false);
-      expect(registerResult.error).toBe('이미 사용 중인 이메일입니다.');
+      expect(registerResult!.success).toBe(false);
+      expect(registerResult!.error).toBe('이미 사용 중인 이메일입니다.');
     });
   });
 
   describe('logout', () => {
     it('should logout and clear state', async () => {
       mockAuthApi.logout.mockResolvedValue({
+        success: true,
         data: { message: '로그아웃되었습니다.' },
-        error: null,
       });
 
       const { result } = renderHook(() => useAuth());
@@ -159,15 +177,16 @@ describe('useAuth Hook', () => {
         await result.current.logout();
       });
 
-      expect(mockLogout).toHaveBeenCalled();
+      expect(mockSetLogout).toHaveBeenCalled();
+      expect(mockPush).toHaveBeenCalledWith('/');
     });
   });
 
   describe('handleOAuthCallback', () => {
     it('should handle OAuth callback and fetch user info', async () => {
       mockAuthApi.getMe.mockResolvedValue({
+        success: true,
         data: mockUser,
-        error: null,
       });
 
       const { result } = renderHook(() => useAuth());
@@ -177,15 +196,14 @@ describe('useAuth Hook', () => {
         callbackResult = await result.current.handleOAuthCallback('oauth-token');
       });
 
-      expect(callbackResult.success).toBe(true);
-      expect(mockSetAccessToken).toHaveBeenCalledWith('oauth-token');
-      expect(mockSetUser).toHaveBeenCalledWith(mockUser);
+      expect(callbackResult!.success).toBe(true);
+      expect(mockSetLogin).toHaveBeenCalledWith(mockUser, 'oauth-token');
     });
 
     it('should handle failed user info fetch', async () => {
       mockAuthApi.getMe.mockResolvedValue({
-        data: null,
-        error: '사용자 정보를 가져올 수 없습니다.',
+        success: false,
+        error: { message: '사용자 정보를 가져올 수 없습니다.' },
       });
 
       const { result } = renderHook(() => useAuth());
@@ -195,7 +213,7 @@ describe('useAuth Hook', () => {
         callbackResult = await result.current.handleOAuthCallback('invalid-token');
       });
 
-      expect(callbackResult.success).toBe(false);
+      expect(callbackResult!.success).toBe(false);
     });
   });
 });

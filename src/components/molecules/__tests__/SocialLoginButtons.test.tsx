@@ -1,11 +1,12 @@
 import { render, screen, fireEvent } from '@testing-library/react';
+import { vi } from 'vitest';
 import { SocialLoginButtons } from '../SocialLoginButtons';
 
 // Mock the auth API
-jest.mock('@/lib/api/auth', () => ({
+vi.mock('@/lib/api/auth', () => ({
   authApi: {
-    getGoogleAuthUrl: jest.fn(() => 'http://localhost:3001/api/v1/auth/google'),
-    getKakaoAuthUrl: jest.fn(() => 'http://localhost:3001/api/v1/auth/kakao'),
+    getGoogleAuthUrl: vi.fn(() => 'http://localhost:3001/api/v1/auth/google'),
+    getKakaoAuthUrl: vi.fn(() => 'http://localhost:3001/api/v1/auth/kakao'),
   },
 }));
 
@@ -20,7 +21,7 @@ Object.defineProperty(window, 'location', {
 
 describe('SocialLoginButtons Component', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     mockLocation.href = '';
   });
 
