@@ -3,10 +3,11 @@
 import { useState } from 'react';
 import { MainLayout } from '@/components/templates';
 import { Button, Badge, Avatar } from '@/components/atoms';
-import { Calendar, MapPin, Link as LinkIcon, Edit2, ThumbsUp, MessageCircle, Bookmark, MoreHorizontal } from 'lucide-react';
+import { Calendar, MapPin, Link as LinkIcon, Edit2, ThumbsUp, MessageCircle, Bookmark, MoreHorizontal, Loader2 } from 'lucide-react';
 import Link from 'next/link';
+import { useRequireAuth } from '@/hooks';
 
-// Sample user data
+// Sample user data (TODO: 실제 API 연동 시 제거)
 const userData = {
   name: '홍길동',
   username: 'honggildong',
@@ -53,7 +54,18 @@ const userPosts = [
 type TabType = 'posts' | 'comments' | 'likes';
 
 export default function ProfilePage() {
+  const { isLoading, isAuthenticated } = useRequireAuth();
   const [activeTab, setActiveTab] = useState<TabType>('posts');
+
+  if (isLoading || !isAuthenticated) {
+    return (
+      <MainLayout>
+        <div className="flex items-center justify-center min-h-[50vh]">
+          <Loader2 className="w-8 h-8 animate-spin text-[var(--color-primary-500)]" />
+        </div>
+      </MainLayout>
+    );
+  }
 
   return (
     <MainLayout>

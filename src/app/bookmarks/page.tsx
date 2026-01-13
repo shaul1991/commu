@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import { MainLayout } from '@/components/templates';
 import { Button, Badge } from '@/components/atoms';
-import { Bookmark, ThumbsUp, MessageCircle, Trash2, FolderPlus, MoreHorizontal } from 'lucide-react';
+import { Bookmark, ThumbsUp, MessageCircle, Trash2, FolderPlus, MoreHorizontal, Loader2 } from 'lucide-react';
+import { useRequireAuth } from '@/hooks';
 
 // Sample bookmarked posts
 const bookmarkedPosts = [
@@ -56,7 +57,18 @@ const bookmarkedPosts = [
 const folders = ['전체', '개발', '커리어', '일상'];
 
 export default function BookmarksPage() {
+  const { isLoading, isAuthenticated } = useRequireAuth();
   const [selectedFolder, setSelectedFolder] = useState('전체');
+
+  if (isLoading || !isAuthenticated) {
+    return (
+      <MainLayout>
+        <div className="flex items-center justify-center min-h-[50vh]">
+          <Loader2 className="w-8 h-8 animate-spin text-[var(--color-primary-500)]" />
+        </div>
+      </MainLayout>
+    );
+  }
 
   const filteredPosts = selectedFolder === '전체'
     ? bookmarkedPosts

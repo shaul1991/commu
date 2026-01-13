@@ -5,11 +5,12 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/atoms';
 import { AuthInput, SocialLoginButtons } from '@/components/molecules';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth, useRedirectIfAuthenticated } from '@/hooks';
 
 export default function RegisterPage() {
   useRouter();
   const { register } = useAuth();
+  const { isLoading: redirectLoading, isAuthenticated } = useRedirectIfAuthenticated();
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -74,6 +75,14 @@ export default function RegisterPage() {
 
     setIsSubmitting(false);
   };
+
+  if (redirectLoading || isAuthenticated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600" />
+      </div>
+    );
+  }
 
   if (success) {
     return (

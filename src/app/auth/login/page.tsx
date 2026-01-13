@@ -5,15 +5,18 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/atoms';
 import { AuthInput, SocialLoginButtons } from '@/components/molecules';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth, useRedirectIfAuthenticated } from '@/hooks';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login, isLoading } = useAuth();
+  const { login, isLoading: authLoading } = useAuth();
+  const { isLoading: redirectLoading } = useRedirectIfAuthenticated();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const isLoading = authLoading || redirectLoading;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

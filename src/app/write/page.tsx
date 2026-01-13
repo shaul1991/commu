@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import { MainLayout } from '@/components/templates';
 import { Button, Badge } from '@/components/atoms';
-import { PenLine, ImageIcon, Link2, Hash, X, Eye, Send } from 'lucide-react';
+import { PenLine, ImageIcon, Link2, Hash, X, Eye, Send, Loader2 } from 'lucide-react';
+import { useRequireAuth } from '@/hooks';
 
 const channels = [
   { slug: 'general', name: '일반' },
@@ -14,11 +15,22 @@ const channels = [
 ];
 
 export default function WritePage() {
+  const { isLoading, isAuthenticated } = useRequireAuth();
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [selectedChannel, setSelectedChannel] = useState('');
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
+
+  if (isLoading || !isAuthenticated) {
+    return (
+      <MainLayout>
+        <div className="flex items-center justify-center min-h-[50vh]">
+          <Loader2 className="w-8 h-8 animate-spin text-[var(--color-primary-500)]" />
+        </div>
+      </MainLayout>
+    );
+  }
 
   const addTag = () => {
     if (tagInput.trim() && !tags.includes(tagInput.trim()) && tags.length < 5) {

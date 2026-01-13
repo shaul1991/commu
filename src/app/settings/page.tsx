@@ -3,8 +3,9 @@
 import { useState } from 'react';
 import { MainLayout } from '@/components/templates';
 import { Button, Avatar } from '@/components/atoms';
-import { Settings, User, Bell, Shield, Palette, LogOut, ChevronRight, Moon, Sun, Monitor } from 'lucide-react';
+import { Settings, User, Bell, Shield, Palette, LogOut, ChevronRight, Moon, Sun, Monitor, Loader2 } from 'lucide-react';
 import Link from 'next/link';
+import { useRequireAuth } from '@/hooks';
 
 type ThemeMode = 'light' | 'dark' | 'system';
 
@@ -37,7 +38,18 @@ const settingsMenu: SettingItem[] = [
 ];
 
 export default function SettingsPage() {
+  const { isLoading, isAuthenticated } = useRequireAuth();
   const [theme, setTheme] = useState<ThemeMode>('system');
+
+  if (isLoading || !isAuthenticated) {
+    return (
+      <MainLayout>
+        <div className="flex items-center justify-center min-h-[50vh]">
+          <Loader2 className="w-8 h-8 animate-spin text-[var(--color-primary-500)]" />
+        </div>
+      </MainLayout>
+    );
+  }
 
   const handleThemeChange = (newTheme: ThemeMode) => {
     setTheme(newTheme);
