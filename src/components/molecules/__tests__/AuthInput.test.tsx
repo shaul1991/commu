@@ -91,7 +91,7 @@ describe('AuthInput Component', () => {
     render(<AuthInput {...defaultProps} error="에러 메시지" />);
 
     const input = screen.getByPlaceholderText('이메일을 입력하세요');
-    expect(input).toHaveClass('border-red-500');
+    expect(input).toHaveClass('border-[var(--color-error-500)]');
   });
 
   it('should have proper accessibility attributes', () => {
