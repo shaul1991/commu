@@ -178,25 +178,38 @@ jobs:
         run: |
           echo "🚀 Triggering Jenkins deployment..."
 
-          # CSRF Crumb 가져오기
-          CRUMB=$(curl -s -u "${{ secrets.JENKINS_USER }}:${{ secrets.JENKINS_API_TOKEN }}" \
-            "${{ secrets.JENKINS_URL }}/crumbIssuer/api/json" | grep -o '"crumb":"[^"]*"' | cut -d'"' -f4)
-
-          if [ -z "$CRUMB" ]; then
-            echo "⚠️ CSRF crumb not required or failed to fetch"
-            CRUMB_HEADER=""
-          else
-            echo "✅ CSRF crumb obtained"
-            CRUMB_HEADER="-H Jenkins-Crumb:$CRUMB"
-          fi
-
-          # Jenkins 빌드 트리거
+          # 방법 1: 토큰만으로 빌드 트리거 (매개변수 포함)
           RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" \
             -X POST \
-            -u "${{ secrets.JENKINS_USER }}:${{ secrets.JENKINS_API_TOKEN }}" \
-            $CRUMB_HEADER \
-            "${{ secrets.JENKINS_URL }}/job/${{ secrets.JENKINS_JOB_NAME }}/build?token=${{ secrets.JENKINS_BUILD_TOKEN }}" \
-            --data-urlencode "json={\"parameter\": [{\"name\": \"GIT_COMMIT\", \"value\": \"${{ github.sha }}\"}, {\"name\": \"GIT_BRANCH\", \"value\": \"${{ github.ref_name }}\"}]}")
+            "${{ secrets.JENKINS_URL }}/job/${{ secrets.JENKINS_JOB_NAME }}/buildWithParameters?token=${{ secrets.JENKINS_BUILD_TOKEN }}&GIT_COMMIT=${{ github.sha }}&GIT_BRANCH=${{ github.ref_name }}")
+
+          if [ "$RESPONSE" -eq 201 ] || [ "$RESPONSE" -eq 200 ]; then
+            echo "✅ Jenkins triggered successfully"
+            exit 0
+          fi
+
+          echo "⚠️ Token-only method failed (HTTP $RESPONSE), trying with auth..."
+
+          # 방법 2: Basic Auth + CSRF Crumb
+          CRUMB_RESPONSE=$(curl -s -u "${{ secrets.JENKINS_USER }}:${{ secrets.JENKINS_API_TOKEN }}" \
+            "${{ secrets.JENKINS_URL }}/crumbIssuer/api/json")
+          CRUMB=$(echo "$CRUMB_RESPONSE" | grep -o '"crumb":"[^"]*"' | cut -d'"' -f4)
+          CRUMB_FIELD=$(echo "$CRUMB_RESPONSE" | grep -o '"crumbRequestField":"[^"]*"' | cut -d'"' -f4)
+
+          if [ -n "$CRUMB" ] && [ -n "$CRUMB_FIELD" ]; then
+            echo "✅ CSRF crumb obtained"
+            RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" \
+              -X POST \
+              -u "${{ secrets.JENKINS_USER }}:${{ secrets.JENKINS_API_TOKEN }}" \
+              -H "$CRUMB_FIELD:$CRUMB" \
+              "${{ secrets.JENKINS_URL }}/job/${{ secrets.JENKINS_JOB_NAME }}/build")
+          else
+            echo "⚠️ No CSRF crumb, trying without..."
+            RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" \
+              -X POST \
+              -u "${{ secrets.JENKINS_USER }}:${{ secrets.JENKINS_API_TOKEN }}" \
+              "${{ secrets.JENKINS_URL }}/job/${{ secrets.JENKINS_JOB_NAME }}/build")
+          fi
 
           if [ "$RESPONSE" -eq 201 ] || [ "$RESPONSE" -eq 200 ]; then
             echo "✅ Jenkins triggered successfully"
