@@ -28,7 +28,9 @@
     "zustand": "^5.0.9"
   },
   "devDependencies": {
+    "@faker-js/faker": "^10.2.0",
     "@tailwindcss/postcss": "^4",
+    "@tanstack/react-query-devtools": "^5.91.2",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.2.0",
     "@testing-library/user-event": "^14.5.2",

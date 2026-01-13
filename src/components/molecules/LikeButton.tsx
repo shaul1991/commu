@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { Heart } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatNumber } from '@/lib/utils';
@@ -12,6 +12,8 @@ interface LikeButtonProps {
   disabled?: boolean;
   showCount?: boolean;
   size?: 'sm' | 'md' | 'lg';
+  /** Optimistic Update를 위한 로컬 상태 사용 여부 */
+  optimistic?: boolean;
 }
 
 const sizeStyles = {
@@ -36,16 +38,30 @@ export function LikeButton({
   disabled = false,
   showCount = true,
   size = 'md',
+  optimistic = false,
 }: LikeButtonProps) {
   const [isAnimating, setIsAnimating] = useState(false);
+  const [optimisticLiked, setOptimisticLiked] = useState(isLiked);
+  const [optimisticCount, setOptimisticCount] = useState(likeCount);
 
-  const handleClick = () => {
+  // optimistic이 false면 props 값 그대로 사용
+  const displayLiked = optimistic ? optimisticLiked : isLiked;
+  const displayCount = optimistic ? optimisticCount : likeCount;
+
+  const handleClick = useCallback(() => {
     if (disabled) return;
 
     setIsAnimating(true);
     setTimeout(() => setIsAnimating(false), 300);
+
+    // Optimistic Update
+    if (optimistic) {
+      setOptimisticLiked((prev) => !prev);
+      setOptimisticCount((prev) => prev + (optimisticLiked ? -1 : 1));
+    }
+
     onToggle();
-  };
+  }, [disabled, optimistic, optimisticLiked, onToggle]);
 
   const styles = sizeStyles[size];
 
@@ -58,26 +74,26 @@ export function LikeButton({
         'rounded-full',
         'transition-all duration-[var(--duration-fast)]',
         'focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]',
-        isLiked
+        displayLiked
           ? 'text-[var(--color-error-500)] bg-[var(--color-error-50)] hover:bg-[var(--color-error-100)]'
           : 'text-[var(--text-secondary)] hover:text-[var(--color-error-500)] hover:bg-[var(--bg-hover)]',
         disabled && 'opacity-50 cursor-not-allowed',
         styles.button
       )}
-      aria-label={isLiked ? '좋아요 취소' : '좋아요'}
-      aria-pressed={isLiked}
+      aria-label={displayLiked ? '좋아요 취소' : '좋아요'}
+      aria-pressed={displayLiked}
     >
       <Heart
         className={cn(
           styles.icon,
           'transition-transform duration-[var(--duration-fast)]',
-          isLiked && 'fill-current',
+          displayLiked && 'fill-current',
           isAnimating && 'scale-125'
         )}
       />
       {showCount && (
         <span className="font-medium min-w-[1.5em] text-center">
-          {formatNumber(likeCount)}
+          {formatNumber(displayCount)}
         </span>
       )}
     </button>

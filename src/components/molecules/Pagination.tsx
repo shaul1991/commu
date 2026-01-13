@@ -2,7 +2,6 @@
 
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/atoms';
 import type { PaginationMeta } from '@/types';
 
 interface PaginationProps {

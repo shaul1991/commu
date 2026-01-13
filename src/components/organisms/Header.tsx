@@ -1,15 +1,59 @@
 'use client';
 
+import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
-import { Search, Bell, Menu } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Search, Bell, Menu, User, Settings, LogOut, X } from 'lucide-react';
 import { Avatar, ThemeToggle } from '@/components/atoms';
 import { cn } from '@/lib/utils';
 
 interface HeaderProps {
   onMenuClick?: () => void;
+  notificationCount?: number;
 }
 
-export function Header({ onMenuClick }: HeaderProps) {
+export function Header({ onMenuClick, notificationCount = 3 }: HeaderProps) {
+  const router = useRouter();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const userMenuRef = useRef<HTMLDivElement>(null);
+
+  // 검색 제출
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+      setIsSearchOpen(false);
+    }
+  };
+
+  // 외부 클릭 시 드롭다운 닫기
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
+        setIsUserMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // 모바일 검색창 열릴 때 포커스
+  useEffect(() => {
+    if (isSearchOpen && searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+  }, [isSearchOpen]);
+
+  const userMenuItems = [
+    { icon: User, label: '프로필', href: '/profile' },
+    { icon: Settings, label: '설정', href: '/settings' },
+    { icon: LogOut, label: '로그아웃', href: '/auth/login', divider: true },
+  ];
+
   return (
     <header
       className={cn(
@@ -42,11 +86,16 @@ export function Header({ onMenuClick }: HeaderProps) {
         </div>
 
         {/* Center Section - Search (Desktop) */}
-        <div className="hidden md:flex flex-1 max-w-xl">
+        <form
+          onSubmit={handleSearchSubmit}
+          className="hidden md:flex flex-1 max-w-xl"
+        >
           <div className="relative w-full">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--text-tertiary)]" />
             <input
               type="search"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="검색어를 입력하세요"
               className={cn(
                 'w-full h-10 pl-10 pr-4',
@@ -60,12 +109,13 @@ export function Header({ onMenuClick }: HeaderProps) {
               )}
             />
           </div>
-        </div>
+        </form>
 
         {/* Right Section */}
         <div className="flex items-center gap-2">
           {/* Mobile Search Button */}
           <button
+            onClick={() => setIsSearchOpen(!isSearchOpen)}
             className="md:hidden p-2 hover:bg-[var(--bg-hover)] rounded-[var(--radius-md)]"
             aria-label="검색"
           >
@@ -78,20 +128,107 @@ export function Header({ onMenuClick }: HeaderProps) {
           </div>
 
           {/* Notifications */}
-          <button
+          <Link
+            href="/notifications"
             className="relative p-2 hover:bg-[var(--bg-hover)] rounded-[var(--radius-md)]"
             aria-label="알림"
           >
             <Bell className="w-5 h-5" />
-            <span className="absolute top-1 right-1 w-2 h-2 bg-[var(--color-error-500)] rounded-full" />
-          </button>
+            {notificationCount > 0 && (
+              <span className="absolute top-0 right-0 min-w-[18px] h-[18px] px-1 flex items-center justify-center bg-[var(--color-error-500)] text-white text-xs font-medium rounded-full">
+                {notificationCount > 99 ? '99+' : notificationCount}
+              </span>
+            )}
+          </Link>
 
           {/* User Menu */}
-          <button className="flex items-center gap-2 p-1 hover:bg-[var(--bg-hover)] rounded-[var(--radius-full)]">
-            <Avatar size="sm" name="사용자" />
-          </button>
+          <div className="relative" ref={userMenuRef}>
+            <button
+              onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+              className="flex items-center gap-2 p-1 hover:bg-[var(--bg-hover)] rounded-[var(--radius-full)]"
+            >
+              <Avatar size="sm" name="사용자" />
+            </button>
+
+            {/* User Dropdown Menu */}
+            {isUserMenuOpen && (
+              <div
+                className={cn(
+                  'absolute right-0 top-full mt-2 w-48',
+                  'bg-[var(--bg-surface)]',
+                  'border border-[var(--border-default)]',
+                  'rounded-[var(--radius-lg)]',
+                  'shadow-[var(--shadow-lg)]',
+                  'py-1',
+                  'z-50'
+                )}
+              >
+                {/* User Info */}
+                <div className="px-4 py-3 border-b border-[var(--border-default)]">
+                  <p className="font-medium text-[var(--text-primary)]">사용자</p>
+                  <p className="text-sm text-[var(--text-tertiary)]">user@example.com</p>
+                </div>
+
+                {/* Menu Items */}
+                {userMenuItems.map((item) => (
+                  <div key={item.label}>
+                    {item.divider && (
+                      <div className="border-t border-[var(--border-default)] my-1" />
+                    )}
+                    <Link
+                      href={item.href}
+                      onClick={() => setIsUserMenuOpen(false)}
+                      className={cn(
+                        'flex items-center gap-3 px-4 py-2',
+                        'text-sm text-[var(--text-secondary)]',
+                        'hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]',
+                        'transition-colors duration-[var(--duration-fast)]'
+                      )}
+                    >
+                      <item.icon className="w-4 h-4" />
+                      {item.label}
+                    </Link>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
+
+      {/* Mobile Search Overlay */}
+      {isSearchOpen && (
+        <div className="md:hidden absolute top-full left-0 right-0 bg-[var(--bg-surface)] border-b border-[var(--border-default)] p-4">
+          <form onSubmit={handleSearchSubmit} className="flex items-center gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--text-tertiary)]" />
+              <input
+                ref={searchInputRef}
+                type="search"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="검색어를 입력하세요"
+                className={cn(
+                  'w-full h-10 pl-10 pr-4',
+                  'bg-[var(--bg-page)] border border-[var(--border-default)]',
+                  'rounded-[var(--radius-full)]',
+                  'text-[var(--text-primary)]',
+                  'placeholder:text-[var(--text-placeholder)]',
+                  'focus:outline-none focus:border-[var(--border-focus)]'
+                )}
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsSearchOpen(false)}
+              className="p-2 hover:bg-[var(--bg-hover)] rounded-[var(--radius-md)]"
+              aria-label="검색 닫기"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </form>
+        </div>
+      )}
     </header>
   );
 }

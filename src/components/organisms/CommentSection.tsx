@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { Send, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { Send, MoreHorizontal, Pencil, Trash2, ArrowDownAZ, Clock, ThumbsUp } from 'lucide-react';
 import { Avatar, Button, CommentListSkeleton } from '@/components/atoms';
 import { LikeIconButton, ConfirmModal } from '@/components/molecules';
 import { QueryError, EmptyState } from '@/components/templates';
@@ -15,13 +15,42 @@ import {
 import { cn, formatRelativeTime } from '@/lib/utils';
 import type { Comment } from '@/types';
 
+type SortType = 'latest' | 'oldest' | 'popular';
+
 interface CommentSectionProps {
   postId: string;
   currentUserId?: string;
 }
 
 export function CommentSection({ postId, currentUserId }: CommentSectionProps) {
+  const [sortType, setSortType] = useState<SortType>('latest');
   const { data: comments, isLoading, isError, error, refetch } = useComments(postId);
+
+  // 댓글 정렬
+  const sortedComments = useMemo(() => {
+    if (!comments) return [];
+
+    const sorted = [...comments];
+    switch (sortType) {
+      case 'oldest':
+        return sorted.sort(
+          (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+        );
+      case 'popular':
+        return sorted.sort((a, b) => b.likeCount - a.likeCount);
+      case 'latest':
+      default:
+        return sorted.sort(
+          (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+    }
+  }, [comments, sortType]);
+
+  const sortOptions = [
+    { value: 'latest' as const, label: '최신순', icon: Clock },
+    { value: 'oldest' as const, label: '오래된순', icon: ArrowDownAZ },
+    { value: 'popular' as const, label: '인기순', icon: ThumbsUp },
+  ];
 
   if (isLoading) {
     return (
@@ -49,9 +78,38 @@ export function CommentSection({ postId, currentUserId }: CommentSectionProps) {
 
   return (
     <section className="mt-6">
-      <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-4">
-        댓글 {commentCount}개
-      </h2>
+      {/* 헤더: 댓글 수 및 정렬 */}
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-lg font-semibold text-[var(--text-primary)]">
+          댓글 {commentCount}개
+        </h2>
+
+        {/* 정렬 옵션 */}
+        {commentCount > 1 && (
+          <div className="flex items-center gap-1">
+            {sortOptions.map((option) => {
+              const Icon = option.icon;
+              return (
+                <button
+                  key={option.value}
+                  onClick={() => setSortType(option.value)}
+                  className={cn(
+                    'flex items-center gap-1 px-2 py-1 text-sm',
+                    'rounded-[var(--radius-md)]',
+                    'transition-colors duration-[var(--duration-fast)]',
+                    sortType === option.value
+                      ? 'bg-[var(--color-primary-50)] text-[var(--color-primary-600)]'
+                      : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
+                  )}
+                >
+                  <Icon className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">{option.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
 
       {/* 댓글 작성 폼 */}
       <CommentForm postId={postId} />
@@ -64,7 +122,7 @@ export function CommentSection({ postId, currentUserId }: CommentSectionProps) {
             description="첫 번째 댓글을 작성해보세요!"
           />
         ) : (
-          comments?.map((comment) => (
+          sortedComments.map((comment) => (
             <CommentItem
               key={comment.id}
               comment={comment}
