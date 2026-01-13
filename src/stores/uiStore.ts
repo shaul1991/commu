@@ -2,6 +2,7 @@
 
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
+import { useShallow } from 'zustand/react/shallow';
 
 // ============================================
 // 타입 정의
@@ -241,35 +242,41 @@ export const useUIStore = create<UIStore>()(
  * 사이드바 상태만 선택
  */
 export const useSidebar = () =>
-  useUIStore((state) => ({
-    isOpen: state.isOpen,
-    open: state.openSidebar,
-    close: state.closeSidebar,
-    toggle: state.toggleSidebar,
-  }));
+  useUIStore(
+    useShallow((state) => ({
+      isOpen: state.isOpen,
+      open: state.openSidebar,
+      close: state.closeSidebar,
+      toggle: state.toggleSidebar,
+    }))
+  );
 
 /**
  * 모달 상태만 선택
  */
 export const useModal = () =>
-  useUIStore((state) => ({
-    type: state.type,
-    data: state.data,
-    open: state.openModal,
-    close: state.closeModal,
-    isOpen: state.type !== null,
-  }));
+  useUIStore(
+    useShallow((state) => ({
+      type: state.type,
+      data: state.data,
+      open: state.openModal,
+      close: state.closeModal,
+      isOpen: state.type !== null,
+    }))
+  );
 
 /**
  * 토스트 상태만 선택
  */
 export const useToast = () =>
-  useUIStore((state) => ({
-    toasts: state.toasts,
-    add: state.addToast,
-    remove: state.removeToast,
-    clear: state.clearToasts,
-  }));
+  useUIStore(
+    useShallow((state) => ({
+      toasts: state.toasts,
+      add: state.addToast,
+      remove: state.removeToast,
+      clear: state.clearToasts,
+    }))
+  );
 
 /**
  * 편의 토스트 함수

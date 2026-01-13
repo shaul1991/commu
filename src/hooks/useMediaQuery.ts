@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useSyncExternalStore, useCallback } from 'react';
 import { isClient } from '@/lib/utils';
 
 /**
@@ -23,26 +23,24 @@ export type BreakpointKey = keyof typeof BREAKPOINTS;
  * @returns 미디어 쿼리 매칭 여부
  */
 export function useMediaQuery(query: string): boolean {
-  const [matches, setMatches] = useState<boolean>(() => {
+  const subscribe = useCallback(
+    (callback: () => void) => {
+      if (!isClient) return () => {};
+      const mediaQueryList = window.matchMedia(query);
+      mediaQueryList.addEventListener('change', callback);
+      return () => mediaQueryList.removeEventListener('change', callback);
+    },
+    [query]
+  );
+
+  const getSnapshot = useCallback(() => {
     if (!isClient) return false;
     return window.matchMedia(query).matches;
-  });
-
-  useEffect(() => {
-    if (!isClient) return;
-
-    const mediaQueryList = window.matchMedia(query);
-    setMatches(mediaQueryList.matches);
-
-    const listener = (event: MediaQueryListEvent) => {
-      setMatches(event.matches);
-    };
-
-    mediaQueryList.addEventListener('change', listener);
-    return () => mediaQueryList.removeEventListener('change', listener);
   }, [query]);
 
-  return matches;
+  const getServerSnapshot = useCallback(() => false, []);
+
+  return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 }
 
 /**

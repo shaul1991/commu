@@ -56,11 +56,6 @@ export function HamburgerMenu({ className }: MobileNavProps) {
   const pathname = usePathname();
   const { theme, setTheme } = useTheme();
 
-  // 경로 변경 시 메뉴 닫기
-  useEffect(() => {
-    setIsOpen(false);
-  }, [pathname]);
-
   // ESC 키로 닫기
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
