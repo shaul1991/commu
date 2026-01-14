@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Search, Bell, Menu, User, Settings, LogOut, X } from 'lucide-react';
 import { Avatar, ThemeToggle } from '@/components/atoms';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/hooks';
 
 interface HeaderProps {
   onMenuClick?: () => void;
@@ -14,11 +15,18 @@ interface HeaderProps {
 
 export function Header({ onMenuClick, notificationCount = 3 }: HeaderProps) {
   const router = useRouter();
+  const { user, isAuthenticated, logout } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const userMenuRef = useRef<HTMLDivElement>(null);
+
+  // 사용자 표시 이름 계산
+  const displayName = user?.displayName ||
+    (user?.firstName && user?.lastName ? `${user.lastName}${user.firstName}` : null) ||
+    user?.email?.split('@')[0] ||
+    '사용자';
 
   // 검색 제출
   const handleSearchSubmit = (e: React.FormEvent) => {
@@ -48,10 +56,14 @@ export function Header({ onMenuClick, notificationCount = 3 }: HeaderProps) {
     }
   }, [isSearchOpen]);
 
+  const handleLogout = async () => {
+    setIsUserMenuOpen(false);
+    await logout();
+  };
+
   const userMenuItems = [
     { icon: User, label: '프로필', href: '/profile' },
     { icon: Settings, label: '설정', href: '/settings' },
-    { icon: LogOut, label: '로그아웃', href: '/auth/login', divider: true },
   ];
 
   return (
@@ -147,7 +159,7 @@ export function Header({ onMenuClick, notificationCount = 3 }: HeaderProps) {
               onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
               className="flex items-center gap-2 p-1 hover:bg-[var(--bg-hover)] rounded-[var(--radius-full)]"
             >
-              <Avatar size="sm" name="사용자" />
+              <Avatar size="sm" name={displayName} src={user?.profileImage} />
             </button>
 
             {/* User Dropdown Menu */}
@@ -165,31 +177,42 @@ export function Header({ onMenuClick, notificationCount = 3 }: HeaderProps) {
               >
                 {/* User Info */}
                 <div className="px-4 py-3 border-b border-[var(--border-default)]">
-                  <p className="font-medium text-[var(--text-primary)]">사용자</p>
-                  <p className="text-sm text-[var(--text-tertiary)]">user@example.com</p>
+                  <p className="font-medium text-[var(--text-primary)]">{displayName}</p>
+                  <p className="text-sm text-[var(--text-tertiary)]">{user?.email}</p>
                 </div>
 
                 {/* Menu Items */}
                 {userMenuItems.map((item) => (
-                  <div key={item.label}>
-                    {item.divider && (
-                      <div className="border-t border-[var(--border-default)] my-1" />
+                  <Link
+                    key={item.label}
+                    href={item.href}
+                    onClick={() => setIsUserMenuOpen(false)}
+                    className={cn(
+                      'flex items-center gap-3 px-4 py-2',
+                      'text-sm text-[var(--text-secondary)]',
+                      'hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]',
+                      'transition-colors duration-[var(--duration-fast)]'
                     )}
-                    <Link
-                      href={item.href}
-                      onClick={() => setIsUserMenuOpen(false)}
-                      className={cn(
-                        'flex items-center gap-3 px-4 py-2',
-                        'text-sm text-[var(--text-secondary)]',
-                        'hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]',
-                        'transition-colors duration-[var(--duration-fast)]'
-                      )}
-                    >
-                      <item.icon className="w-4 h-4" />
-                      {item.label}
-                    </Link>
-                  </div>
+                  >
+                    <item.icon className="w-4 h-4" />
+                    {item.label}
+                  </Link>
                 ))}
+
+                {/* Logout */}
+                <div className="border-t border-[var(--border-default)] my-1" />
+                <button
+                  onClick={handleLogout}
+                  className={cn(
+                    'flex items-center gap-3 px-4 py-2 w-full',
+                    'text-sm text-[var(--text-secondary)]',
+                    'hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]',
+                    'transition-colors duration-[var(--duration-fast)]'
+                  )}
+                >
+                  <LogOut className="w-4 h-4" />
+                  로그아웃
+                </button>
               </div>
             )}
           </div>

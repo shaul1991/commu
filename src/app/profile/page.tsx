@@ -7,19 +7,6 @@ import { Calendar, MapPin, Link as LinkIcon, Edit2, ThumbsUp, MessageCircle, Boo
 import Link from 'next/link';
 import { useRequireAuth } from '@/hooks';
 
-// Sample user data (TODO: 실제 API 연동 시 제거)
-const userData = {
-  name: '홍길동',
-  username: 'honggildong',
-  bio: '풀스택 개발자 | Next.js & TypeScript 애호가 | 오픈소스 기여자',
-  location: '서울, 대한민국',
-  website: 'https://honggildong.dev',
-  joinedAt: '2024년 1월',
-  followers: 1234,
-  following: 567,
-  posts: 89,
-};
-
 // Sample posts data
 const userPosts = [
   {
@@ -54,8 +41,16 @@ const userPosts = [
 type TabType = 'posts' | 'comments' | 'likes';
 
 export default function ProfilePage() {
-  const { isLoading, isAuthenticated } = useRequireAuth();
+  const { user, isLoading, isAuthenticated } = useRequireAuth();
   const [activeTab, setActiveTab] = useState<TabType>('posts');
+
+  // 사용자 표시 정보 계산
+  const displayName = user?.displayName ||
+    (user?.firstName && user?.lastName ? `${user.lastName}${user.firstName}` : null) ||
+    user?.email?.split('@')[0] ||
+    '사용자';
+
+  const username = user?.email?.split('@')[0] || 'user';
 
   if (isLoading || !isAuthenticated) {
     return (
@@ -73,14 +68,14 @@ export default function ProfilePage() {
       <div className="bg-[var(--bg-surface)] rounded-[var(--radius-lg)] border border-[var(--border-default)] p-6 mb-6">
         <div className="flex flex-col md:flex-row items-start gap-6">
           {/* Avatar */}
-          <Avatar name={userData.name} size="xl" />
+          <Avatar name={displayName} src={user?.profileImage} size="xl" />
 
           {/* User Info */}
           <div className="flex-1">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
               <div>
-                <h1 className="text-2xl font-bold text-[var(--text-primary)]">{userData.name}</h1>
-                <p className="text-[var(--text-tertiary)]">@{userData.username}</p>
+                <h1 className="text-2xl font-bold text-[var(--text-primary)]">{displayName}</h1>
+                <p className="text-[var(--text-tertiary)]">@{username}</p>
               </div>
               <Link href="/settings/profile">
                 <Button variant="secondary" size="sm">
@@ -90,36 +85,37 @@ export default function ProfilePage() {
               </Link>
             </div>
 
-            <p className="text-[var(--text-secondary)] mb-4">{userData.bio}</p>
+            {/* Email */}
+            <p className="text-[var(--text-secondary)] mb-4">{user?.email}</p>
 
             {/* Meta Info */}
             <div className="flex flex-wrap gap-4 text-sm text-[var(--text-tertiary)] mb-4">
               <span className="flex items-center gap-1">
-                <MapPin className="w-4 h-4" />
-                {userData.location}
-              </span>
-              <a href={userData.website} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-[var(--color-primary-500)] hover:underline">
-                <LinkIcon className="w-4 h-4" />
-                {userData.website.replace('https://', '')}
-              </a>
-              <span className="flex items-center gap-1">
                 <Calendar className="w-4 h-4" />
-                {userData.joinedAt} 가입
+                커뮤 회원
               </span>
+              {user?.isEmailVerified && (
+                <span className="flex items-center gap-1 text-[var(--color-success-500)]">
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                  이메일 인증됨
+                </span>
+              )}
             </div>
 
-            {/* Stats */}
+            {/* Stats - TODO: API 연동 후 실제 데이터로 대체 */}
             <div className="flex gap-6">
-              <button className="hover:underline">
-                <span className="font-bold text-[var(--text-primary)]">{userData.followers.toLocaleString()}</span>
-                <span className="text-[var(--text-secondary)] ml-1">팔로워</span>
-              </button>
-              <button className="hover:underline">
-                <span className="font-bold text-[var(--text-primary)]">{userData.following.toLocaleString()}</span>
-                <span className="text-[var(--text-secondary)] ml-1">팔로잉</span>
-              </button>
               <span>
-                <span className="font-bold text-[var(--text-primary)]">{userData.posts}</span>
+                <span className="font-bold text-[var(--text-primary)]">0</span>
+                <span className="text-[var(--text-secondary)] ml-1">팔로워</span>
+              </span>
+              <span>
+                <span className="font-bold text-[var(--text-primary)]">0</span>
+                <span className="text-[var(--text-secondary)] ml-1">팔로잉</span>
+              </span>
+              <span>
+                <span className="font-bold text-[var(--text-primary)]">0</span>
                 <span className="text-[var(--text-secondary)] ml-1">게시글</span>
               </span>
             </div>

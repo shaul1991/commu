@@ -5,7 +5,7 @@ import { MainLayout } from '@/components/templates';
 import { Button, Avatar } from '@/components/atoms';
 import { Settings, User, Bell, Shield, Palette, LogOut, ChevronRight, Moon, Sun, Monitor, Loader2 } from 'lucide-react';
 import Link from 'next/link';
-import { useRequireAuth } from '@/hooks';
+import { useRequireAuth, useAuth } from '@/hooks';
 
 type ThemeMode = 'light' | 'dark' | 'system';
 
@@ -38,8 +38,17 @@ const settingsMenu: SettingItem[] = [
 ];
 
 export default function SettingsPage() {
-  const { isLoading, isAuthenticated } = useRequireAuth();
+  const { user, isLoading, isAuthenticated } = useRequireAuth();
+  const { logout } = useAuth();
   const [theme, setTheme] = useState<ThemeMode>('system');
+
+  // 사용자 표시 정보 계산
+  const displayName = user?.displayName ||
+    (user?.firstName && user?.lastName ? `${user.lastName}${user.firstName}` : null) ||
+    user?.email?.split('@')[0] ||
+    '사용자';
+
+  const username = user?.email?.split('@')[0] || 'user';
 
   if (isLoading || !isAuthenticated) {
     return (
@@ -83,10 +92,10 @@ export default function SettingsPage() {
           {/* Current User */}
           <div className="p-4 border-b border-[var(--border-default)]">
             <div className="flex items-center gap-4">
-              <Avatar name="홍길동" size="lg" />
+              <Avatar name={displayName} src={user?.profileImage} size="lg" />
               <div className="flex-1">
-                <p className="font-medium text-[var(--text-primary)]">홍길동</p>
-                <p className="text-sm text-[var(--text-tertiary)]">@honggildong</p>
+                <p className="font-medium text-[var(--text-primary)]">{displayName}</p>
+                <p className="text-sm text-[var(--text-tertiary)]">@{username}</p>
               </div>
               <Link href="/settings/profile">
                 <Button variant="secondary" size="sm">편집</Button>
@@ -180,7 +189,12 @@ export default function SettingsPage() {
                 현재 기기에서 로그아웃합니다
               </p>
             </div>
-            <Button variant="secondary" size="sm" className="text-[var(--color-error-500)] hover:bg-[var(--color-error-50)]">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={logout}
+              className="text-[var(--color-error-500)] hover:bg-[var(--color-error-50)]"
+            >
               <LogOut className="w-4 h-4 mr-1" />
               로그아웃
             </Button>
