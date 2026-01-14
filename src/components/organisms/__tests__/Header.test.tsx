@@ -52,6 +52,47 @@ describe('Header Component', () => {
     vi.clearAllMocks();
   });
 
+  describe('비로그인 상태', () => {
+    beforeEach(() => {
+      mockUseAuth.mockReturnValue({
+        user: null,
+        isAuthenticated: false,
+        isLoading: false,
+        login: vi.fn(),
+        register: vi.fn(),
+        logout: mockLogout,
+        handleOAuthCallback: vi.fn(),
+      });
+    });
+
+    it('로그인 버튼이 표시되어야 한다', () => {
+      renderWithProviders(<Header />);
+      expect(screen.getByText('로그인')).toBeInTheDocument();
+    });
+
+    it('회원가입 버튼이 표시되어야 한다', () => {
+      renderWithProviders(<Header />);
+      expect(screen.getByText('회원가입')).toBeInTheDocument();
+    });
+
+    it('로그인 버튼이 /auth/login으로 연결되어야 한다', () => {
+      renderWithProviders(<Header />);
+      const loginLink = screen.getByText('로그인').closest('a');
+      expect(loginLink).toHaveAttribute('href', '/auth/login');
+    });
+
+    it('회원가입 버튼이 /auth/register로 연결되어야 한다', () => {
+      renderWithProviders(<Header />);
+      const registerLink = screen.getByText('회원가입').closest('a');
+      expect(registerLink).toHaveAttribute('href', '/auth/register');
+    });
+
+    it('알림 링크가 표시되지 않아야 한다', () => {
+      renderWithProviders(<Header />);
+      expect(screen.queryByLabelText('알림')).not.toBeInTheDocument();
+    });
+  });
+
   describe('로그인 사용자 정보 표시', () => {
     it('로그인한 사용자의 이름이 표시됨', () => {
       mockUseAuth.mockReturnValue({
@@ -161,6 +202,27 @@ describe('Header Component', () => {
         expect(mockLogout).toHaveBeenCalled();
       });
     });
+
+    it('로그인 상태에서 로그인/회원가입 버튼이 표시되지 않아야 한다', () => {
+      mockUseAuth.mockReturnValue({
+        user: {
+          id: '1',
+          email: 'test@example.com',
+          isEmailVerified: true,
+        },
+        isAuthenticated: true,
+        isLoading: false,
+        login: vi.fn(),
+        register: vi.fn(),
+        logout: mockLogout,
+        handleOAuthCallback: vi.fn(),
+      });
+
+      renderWithProviders(<Header />);
+
+      expect(screen.queryByText('로그인')).not.toBeInTheDocument();
+      expect(screen.queryByText('회원가입')).not.toBeInTheDocument();
+    });
   });
 
   describe('프로필 링크', () => {
@@ -212,6 +274,41 @@ describe('Header Component', () => {
 
       const settingsLink = screen.getByRole('link', { name: /설정/i });
       expect(settingsLink).toHaveAttribute('href', '/settings');
+    });
+  });
+
+  describe('공통 요소', () => {
+    beforeEach(() => {
+      mockUseAuth.mockReturnValue({
+        user: null,
+        isAuthenticated: false,
+        isLoading: false,
+        login: vi.fn(),
+        register: vi.fn(),
+        logout: mockLogout,
+        handleOAuthCallback: vi.fn(),
+      });
+    });
+
+    it('로고가 표시되어야 한다', () => {
+      renderWithProviders(<Header />);
+      expect(screen.getByText('커뮤')).toBeInTheDocument();
+    });
+
+    it('로고가 홈으로 연결되어야 한다', () => {
+      renderWithProviders(<Header />);
+      const logoLink = screen.getByText('커뮤').closest('a');
+      expect(logoLink).toHaveAttribute('href', '/');
+    });
+
+    it('검색 입력창이 표시되어야 한다', () => {
+      renderWithProviders(<Header />);
+      expect(screen.getByPlaceholderText('검색어를 입력하세요')).toBeInTheDocument();
+    });
+
+    it('메뉴 버튼이 표시되어야 한다', () => {
+      renderWithProviders(<Header />);
+      expect(screen.getByLabelText('메뉴 열기')).toBeInTheDocument();
     });
   });
 });

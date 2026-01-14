@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Search, Bell, Menu, User, Settings, LogOut, X } from 'lucide-react';
-import { Avatar, ThemeToggle } from '@/components/atoms';
+import { Avatar, Button, ThemeToggle } from '@/components/atoms';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks';
 
@@ -139,83 +139,100 @@ export function Header({ onMenuClick, notificationCount = 3 }: HeaderProps) {
             <ThemeToggle />
           </div>
 
-          {/* Notifications */}
-          <Link
-            href="/notifications"
-            className="relative p-2 hover:bg-[var(--bg-hover)] rounded-[var(--radius-md)]"
-            aria-label="알림"
-          >
-            <Bell className="w-5 h-5" />
-            {notificationCount > 0 && (
-              <span className="absolute top-0 right-0 min-w-[18px] h-[18px] px-1 flex items-center justify-center bg-[var(--color-error-500)] text-white text-xs font-medium rounded-full">
-                {notificationCount > 99 ? '99+' : notificationCount}
-              </span>
-            )}
-          </Link>
-
-          {/* User Menu */}
-          <div className="relative" ref={userMenuRef}>
-            <button
-              onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-              className="flex items-center gap-2 p-1 hover:bg-[var(--bg-hover)] rounded-[var(--radius-full)]"
-            >
-              <Avatar size="sm" name={displayName} src={user?.profileImage} />
-            </button>
-
-            {/* User Dropdown Menu */}
-            {isUserMenuOpen && (
-              <div
-                className={cn(
-                  'absolute right-0 top-full mt-2 w-48',
-                  'bg-[var(--bg-surface)]',
-                  'border border-[var(--border-default)]',
-                  'rounded-[var(--radius-lg)]',
-                  'shadow-[var(--shadow-lg)]',
-                  'py-1',
-                  'z-50'
-                )}
+          {isAuthenticated ? (
+            <>
+              {/* Notifications */}
+              <Link
+                href="/notifications"
+                className="relative p-2 hover:bg-[var(--bg-hover)] rounded-[var(--radius-md)]"
+                aria-label="알림"
               >
-                {/* User Info */}
-                <div className="px-4 py-3 border-b border-[var(--border-default)]">
-                  <p className="font-medium text-[var(--text-primary)]">{displayName}</p>
-                  <p className="text-sm text-[var(--text-tertiary)]">{user?.email}</p>
-                </div>
+                <Bell className="w-5 h-5" />
+                {notificationCount > 0 && (
+                  <span className="absolute top-0 right-0 min-w-[18px] h-[18px] px-1 flex items-center justify-center bg-[var(--color-error-500)] text-white text-xs font-medium rounded-full">
+                    {notificationCount > 99 ? '99+' : notificationCount}
+                  </span>
+                )}
+              </Link>
 
-                {/* Menu Items */}
-                {userMenuItems.map((item) => (
-                  <Link
-                    key={item.label}
-                    href={item.href}
-                    onClick={() => setIsUserMenuOpen(false)}
+              {/* User Menu */}
+              <div className="relative" ref={userMenuRef}>
+                <button
+                  onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                  className="flex items-center gap-2 p-1 hover:bg-[var(--bg-hover)] rounded-[var(--radius-full)]"
+                >
+                  <Avatar size="sm" name={displayName} src={user?.profileImage} />
+                </button>
+
+                {/* User Dropdown Menu */}
+                {isUserMenuOpen && (
+                  <div
                     className={cn(
-                      'flex items-center gap-3 px-4 py-2',
-                      'text-sm text-[var(--text-secondary)]',
-                      'hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]',
-                      'transition-colors duration-[var(--duration-fast)]'
+                      'absolute right-0 top-full mt-2 w-48',
+                      'bg-[var(--bg-surface)]',
+                      'border border-[var(--border-default)]',
+                      'rounded-[var(--radius-lg)]',
+                      'shadow-[var(--shadow-lg)]',
+                      'py-1',
+                      'z-50'
                     )}
                   >
-                    <item.icon className="w-4 h-4" />
-                    {item.label}
-                  </Link>
-                ))}
+                    {/* User Info */}
+                    <div className="px-4 py-3 border-b border-[var(--border-default)]">
+                      <p className="font-medium text-[var(--text-primary)]">{displayName}</p>
+                      <p className="text-sm text-[var(--text-tertiary)]">{user?.email}</p>
+                    </div>
 
-                {/* Logout */}
-                <div className="border-t border-[var(--border-default)] my-1" />
-                <button
-                  onClick={handleLogout}
-                  className={cn(
-                    'flex items-center gap-3 px-4 py-2 w-full',
-                    'text-sm text-[var(--text-secondary)]',
-                    'hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]',
-                    'transition-colors duration-[var(--duration-fast)]'
-                  )}
-                >
-                  <LogOut className="w-4 h-4" />
-                  로그아웃
-                </button>
+                    {/* Menu Items */}
+                    {userMenuItems.map((item) => (
+                      <Link
+                        key={item.label}
+                        href={item.href}
+                        onClick={() => setIsUserMenuOpen(false)}
+                        className={cn(
+                          'flex items-center gap-3 px-4 py-2',
+                          'text-sm text-[var(--text-secondary)]',
+                          'hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]',
+                          'transition-colors duration-[var(--duration-fast)]'
+                        )}
+                      >
+                        <item.icon className="w-4 h-4" />
+                        {item.label}
+                      </Link>
+                    ))}
+
+                    {/* Logout */}
+                    <div className="border-t border-[var(--border-default)] my-1" />
+                    <button
+                      onClick={handleLogout}
+                      className={cn(
+                        'flex items-center gap-3 px-4 py-2 w-full',
+                        'text-sm text-[var(--text-secondary)]',
+                        'hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]',
+                        'transition-colors duration-[var(--duration-fast)]'
+                      )}
+                    >
+                      <LogOut className="w-4 h-4" />
+                      로그아웃
+                    </button>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
+            </>
+          ) : (
+            <div className="flex items-center gap-2">
+              <Link href="/auth/login">
+                <Button variant="ghost" size="sm">
+                  로그인
+                </Button>
+              </Link>
+              <Link href="/auth/register" className="hidden sm:block">
+                <Button variant="primary" size="sm">
+                  회원가입
+                </Button>
+              </Link>
+            </div>
+          )}
         </div>
       </div>
 
