@@ -4,6 +4,8 @@ pipeline {
     environment {
         PROJECT_DIR = '/opt/projects/commu'
         ENV = 'prod'
+        APP_NAME = 'commu-prod'
+        APP_PORT = '3003'
         SLACK_WEBHOOK_URL = credentials('slack-webhook-url')
     }
 
@@ -63,40 +65,51 @@ pipeline {
             }
         }
 
-        stage('Build and Deploy') {
+        stage('Build') {
             steps {
                 sh """
                     cd ${PROJECT_DIR}
-                    chmod +x ./scripts/deploy.sh
 
-                    # Run build and deploy via Docker with Node image
+                    # Run build via Docker with Node image
                     docker run --rm \
                         -v ${PROJECT_DIR}:${PROJECT_DIR} \
-                        -v /home/deploy/.pm2:/root/.pm2 \
                         -w ${PROJECT_DIR} \
                         --network host \
                         node:22-alpine \
                         sh -c "npm ci && npm run build"
 
-                    echo "Build completed, deploying with PM2..."
+                    echo "Build completed!"
                 """
             }
         }
 
-        stage('PM2 Deploy') {
+        stage('Deploy') {
             steps {
                 sh """
-                    # PM2 commands run on host via SSH
-                    ssh -o StrictHostKeyChecking=no deploy@localhost "cd ${PROJECT_DIR} && \
-                        if pm2 describe commu-prod > /dev/null 2>&1; then \
-                            echo 'Restarting existing PM2 process...'; \
-                            pm2 restart commu-prod; \
-                        else \
-                            echo 'Starting new PM2 process...'; \
-                            pm2 start npm --name commu-prod -- start; \
-                        fi && \
-                        pm2 save && \
-                        pm2 status commu-prod"
+                    cd ${PROJECT_DIR}
+
+                    # Stop and remove existing container if exists
+                    docker stop ${APP_NAME} 2>/dev/null || true
+                    docker rm ${APP_NAME} 2>/dev/null || true
+
+                    # Start new container
+                    docker run -d \
+                        --name ${APP_NAME} \
+                        --restart unless-stopped \
+                        -v ${PROJECT_DIR}:${PROJECT_DIR} \
+                        -w ${PROJECT_DIR} \
+                        -p ${APP_PORT}:3000 \
+                        --network host \
+                        node:22-alpine \
+                        sh -c "npm start"
+
+                    echo "Container ${APP_NAME} started on port ${APP_PORT}"
+
+                    # Wait for container to start
+                    sleep 5
+
+                    # Check container status
+                    docker ps --filter "name=${APP_NAME}"
                 """
             }
         }
