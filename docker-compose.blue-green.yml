@@ -10,6 +10,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
     image: ${DOCKER_IMAGE:-commu}:${IMAGE_TAG:-latest}
     restart: unless-stopped
     ports:
@@ -30,6 +32,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
     image: ${DOCKER_IMAGE:-commu}:${IMAGE_TAG:-latest}
     restart: unless-stopped
     ports:

@@ -190,7 +190,15 @@ main() {
 
     # Step 1: Build new image with tag
     echo -e "${YELLOW}Step 1: Building new image...${NC}"
-    docker build -t "${DOCKER_IMAGE}:${IMAGE_TAG}" -t "${DOCKER_IMAGE}:latest" .
+
+    # Load NEXT_PUBLIC_API_URL from env file for build-time injection
+    NEXT_PUBLIC_API_URL=$(grep "^NEXT_PUBLIC_API_URL=" "${ENV_FILE}" | cut -d'=' -f2-)
+    echo "NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}"
+
+    docker build \
+        --build-arg NEXT_PUBLIC_API_URL="${NEXT_PUBLIC_API_URL}" \
+        -t "${DOCKER_IMAGE}:${IMAGE_TAG}" \
+        -t "${DOCKER_IMAGE}:latest" .
     echo -e "${GREEN}Image built: ${DOCKER_IMAGE}:${IMAGE_TAG}${NC}"
     echo ""
 
