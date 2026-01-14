@@ -12,7 +12,7 @@ import {
   updateComment,
   deleteComment,
   toggleCommentLike,
-} from '@/mocks/api';
+} from '@/lib/api/comments';
 import type { Comment } from '@/types';
 import { toast } from '@/stores/uiStore';
 
