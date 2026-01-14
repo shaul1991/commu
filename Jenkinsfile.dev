@@ -1,0 +1,194 @@
+pipeline {
+    agent any
+
+    environment {
+        PROJECT_DIR = '/opt/projects/commu'
+        ENV = 'dev'
+        SLACK_WEBHOOK_URL = credentials('slack-webhook-url')
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout([
+                    $class: 'GitSCM',
+                    branches: [[name: '*/develop']],
+                    userRemoteConfigs: [[
+                        url: 'git@github.com:shaul1991/commu.git',
+                        credentialsId: 'github-ssh-key'
+                    ]]
+                ])
+            }
+        }
+
+        stage('Inject Env File') {
+            steps {
+                configFileProvider([
+                    configFile(fileId: 'commu-env-dev', targetLocation: '.env.local')
+                ]) {
+                    sh """
+                        echo "Env file injected successfully"
+                        ls -la .env.local
+                    """
+                }
+            }
+        }
+
+        stage('Sync to Project Dir') {
+            steps {
+                configFileProvider([
+                    configFile(fileId: 'commu-env-dev', targetLocation: '.env.local')
+                ]) {
+                    sh """
+                        # Clean target directory (except important files)
+                        find ${PROJECT_DIR} -mindepth 1 -maxdepth 1 \
+                            ! -name '.git' \
+                            ! -name 'node_modules' \
+                            ! -name '.next' \
+                            ! -name '.env.*' \
+                            -exec rm -rf {} + 2>/dev/null || true
+
+                        # Copy all files except excluded ones
+                        tar --exclude='.git' --exclude='node_modules' --exclude='.next' -cf - . | \
+                            tar -xf - -C ${PROJECT_DIR}/
+
+                        # Copy env file to project directory with proper permissions
+                        cp .env.local ${PROJECT_DIR}/.env.local
+                        chmod 644 ${PROJECT_DIR}/.env.local
+
+                        echo "Files synced to ${PROJECT_DIR}"
+                        ls -la ${PROJECT_DIR}/
+                    """
+                }
+            }
+        }
+
+        stage('Install Dependencies') {
+            steps {
+                sh """
+                    cd ${PROJECT_DIR}
+                    npm ci
+                """
+            }
+        }
+
+        stage('Build') {
+            steps {
+                sh """
+                    cd ${PROJECT_DIR}
+                    npm run build
+                """
+            }
+        }
+
+        stage('Deploy') {
+            steps {
+                sh """
+                    cd ${PROJECT_DIR}
+
+                    # PM2로 실행 중인 프로세스 확인 및 재시작
+                    if pm2 list | grep -q "commu-dev"; then
+                        echo "Restarting existing PM2 process..."
+                        pm2 restart commu-dev
+                    else
+                        echo "Starting new PM2 process..."
+                        pm2 start npm --name "commu-dev" -- start
+                    fi
+
+                    # 프로세스 상태 확인
+                    pm2 status commu-dev
+                """
+            }
+        }
+    }
+
+    post {
+        success {
+            script {
+                def commitHash = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
+
+                sh """
+                    curl -X POST ${SLACK_WEBHOOK_URL} \
+                        -H "Content-Type: application/json" \
+                        -d '{
+                            "blocks": [
+                                {
+                                    "type": "header",
+                                    "text": {
+                                        "type": "plain_text",
+                                        "text": "✅ Commu Dev 배포 완료",
+                                        "emoji": true
+                                    }
+                                },
+                                {
+                                    "type": "section",
+                                    "fields": [
+                                        {
+                                            "type": "mrkdwn",
+                                            "text": "*Commit:*\\n${commitHash}"
+                                        },
+                                        {
+                                            "type": "mrkdwn",
+                                            "text": "*Status:*\\nOnline"
+                                        }
+                                    ]
+                                },
+                                {
+                                    "type": "context",
+                                    "elements": [
+                                        {
+                                            "type": "mrkdwn",
+                                            "text": "🔗 <https://dev-commu.shaul.link|Dev Server>"
+                                        }
+                                    ]
+                                }
+                            ]
+                        }'
+                """
+            }
+            echo "Dev deployment successful!"
+        }
+        failure {
+            script {
+                sh """
+                    curl -X POST ${SLACK_WEBHOOK_URL} \
+                        -H "Content-Type: application/json" \
+                        -d '{
+                            "blocks": [
+                                {
+                                    "type": "header",
+                                    "text": {
+                                        "type": "plain_text",
+                                        "text": "❌ Commu Dev 배포 실패",
+                                        "emoji": true
+                                    }
+                                },
+                                {
+                                    "type": "section",
+                                    "text": {
+                                        "type": "mrkdwn",
+                                        "text": "Jenkins 로그를 확인해주세요."
+                                    }
+                                },
+                                {
+                                    "type": "actions",
+                                    "elements": [
+                                        {
+                                            "type": "button",
+                                            "text": {
+                                                "type": "plain_text",
+                                                "text": "📋 로그 확인",
+                                                "emoji": true
+                                            },
+                                            "url": "${BUILD_URL}console"
+                                        }
+                                    ]
+                                }
+                            ]
+                        }'
+                """
+            }
+            echo "Dev deployment failed!"
+        }
+    }
+}

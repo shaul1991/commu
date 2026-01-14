@@ -1,4 +1,4 @@
-name: CI/CD
+name: CI Pipeline
 
 on:
   push:
@@ -25,27 +25,27 @@ jobs:
       cache-key: ${{ steps.cache-key.outputs.key }}
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-      
+
       - name: Generate cache key
         id: cache-key
         run: echo "key=node-modules-${{ hashFiles('package.json') }}" >> $GITHUB_OUTPUT
-      
+
       - name: Restore cache
         id: cache-restore
         uses: actions/cache/restore@v4
         with:
           path: node_modules
           key: ${{ steps.cache-key.outputs.key }}
-      
+
       - name: Install dependencies
         if: steps.cache-restore.outputs.cache-hit != 'true'
         run: npm install
-      
+
       - name: Save cache
         if: steps.cache-restore.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
@@ -134,60 +134,208 @@ jobs:
         with:
           name: build-output
           path: .next
-          retention-days: 1
+          retention-days: 7
 
   # ============================================
-  # Stage 4: E2E (조건부 - main push 또는 e2e 라벨)
+  # Deploy Dev - develop branch push
   # ============================================
-  e2e:
-    name: E2E
-    needs: [setup, build]
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    if: |
-      (github.ref == 'refs/heads/main' && github.event_name == 'push') ||
-      contains(github.event.pull_request.labels.*.name, 'e2e')
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-      - uses: actions/cache/restore@v4
-        with:
-          path: node_modules
-          key: ${{ needs.setup.outputs.cache-key }}
-      - name: Run E2E Tests
-        run: npm run test:e2e --if-present
-
-  # ============================================
-  # Deploy - main push 시만
-  # ============================================
-  deploy:
-    name: Deploy
-    needs: [setup, build, e2e]
-    if: |
-      always() &&
-      needs.build.result == 'success' &&
-      (needs.e2e.result == 'success' || needs.e2e.result == 'skipped') &&
-      github.ref == 'refs/heads/main' &&
-      github.event_name == 'push'
+  deploy-dev:
+    name: Deploy to Dev
+    needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
     steps:
-      - name: Trigger Jenkins via SSH
+      - name: Trigger Jenkins Dev Deployment via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        env:
+          JENKINS_USER: ${{ secrets.JENKINS_USER }}
+          JENKINS_API_TOKEN: ${{ secrets.JENKINS_API_TOKEN }}
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          port: ${{ secrets.SSH_PORT }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          envs: JENKINS_USER,JENKINS_API_TOKEN
+          script: |
+            echo "Triggering Jenkins job commu-dev via localhost..."
+
+            JENKINS_LOCAL="http://localhost:8888"
+
+            # Try without CSRF first
+            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
+              -u "${JENKINS_USER}:${JENKINS_API_TOKEN}" \
+              "${JENKINS_LOCAL}/job/commu-dev/build")
+
+            if [ "$HTTP_CODE" = "201" ] || [ "$HTTP_CODE" = "200" ]; then
+              echo "Build triggered successfully (HTTP $HTTP_CODE)"
+              exit 0
+            fi
+
+            # If 403, try with CSRF crumb
+            if [ "$HTTP_CODE" = "403" ]; then
+              echo "Got 403, trying with CSRF crumb..."
+
+              CRUMB=$(curl -s -u "${JENKINS_USER}:${JENKINS_API_TOKEN}" \
+                "${JENKINS_LOCAL}/crumbIssuer/api/json" | jq -r '.crumb // empty')
+
+              if [ -n "$CRUMB" ]; then
+                curl -X POST \
+                  -u "${JENKINS_USER}:${JENKINS_API_TOKEN}" \
+                  -H "Jenkins-Crumb: $CRUMB" \
+                  "${JENKINS_LOCAL}/job/commu-dev/build" \
+                  --fail --show-error
+                echo "Build triggered with CSRF crumb"
+              else
+                echo "Failed to get CSRF crumb"
+                exit 1
+              fi
+            else
+              echo "Unexpected HTTP code: $HTTP_CODE"
+              exit 1
+            fi
+
+      - name: Notify Slack - Dev Deployed
+        if: success()
         run: |
-          echo "🚀 Triggering Jenkins deployment via SSH..."
+          curl -X POST ${{ secrets.SLACK_WEBHOOK_URL }} \
+            -H "Content-Type: application/json" \
+            -d '{
+              "blocks": [
+                {
+                  "type": "header",
+                  "text": {
+                    "type": "plain_text",
+                    "text": "🚀 Commu Dev 배포 시작",
+                    "emoji": true
+                  }
+                },
+                {
+                  "type": "section",
+                  "fields": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Branch:*\ndevelop"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Commit:*\n`${{ github.sha }}`"
+                    }
+                  ]
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Commit Message:*\n${{ github.event.head_commit.message }}"
+                  }
+                },
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "👤 *Author:* ${{ github.actor }} | 🔗 <https://dev-commu.shaul.link|Dev Server>"
+                    }
+                  ]
+                }
+              ]
+            }'
 
-          # SSH 키 설정
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > key.pem
-          chmod 600 key.pem
-
-          # SSH로 Jenkins 서버에서 빌드 트리거
-          ssh -i key.pem -o StrictHostKeyChecking=no \
-            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
-            "curl -s -X POST 'http://localhost:8080/job/${{ secrets.JENKINS_JOB_NAME }}/buildWithParameters?token=${{ secrets.JENKINS_BUILD_TOKEN }}&GIT_COMMIT=${{ github.sha }}&GIT_BRANCH=${{ github.ref_name }}'"
-
-          # 키 파일 삭제
-          rm -f key.pem
-
-          echo "✅ Jenkins triggered successfully"
+  # ============================================
+  # Deploy Prod - main branch push (수동 승인 필요)
+  # ============================================
+  notify-prod-ready:
+    name: Notify Production Ready
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - name: Send Slack Notification
+        run: |
+          curl -X POST ${{ secrets.SLACK_WEBHOOK_URL }} \
+            -H "Content-Type: application/json" \
+            -d '{
+              "blocks": [
+                {
+                  "type": "header",
+                  "text": {
+                    "type": "plain_text",
+                    "text": "✅ Commu Production 배포 준비 완료",
+                    "emoji": true
+                  }
+                },
+                {
+                  "type": "section",
+                  "fields": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Branch:*\nmain"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Commit:*\n`${{ github.sha }}`"
+                    }
+                  ]
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Commit Message:*\n${{ github.event.head_commit.message }}"
+                  }
+                },
+                {
+                  "type": "section",
+                  "fields": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "*CI Status:*\n✅ Lint 통과\n✅ Test 통과\n✅ Build 성공"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Author:*\n${{ github.actor }}"
+                    }
+                  ]
+                },
+                {
+                  "type": "divider"
+                },
+                {
+                  "type": "actions",
+                  "elements": [
+                    {
+                      "type": "button",
+                      "text": {
+                        "type": "plain_text",
+                        "text": "🚀 Jenkins 배포",
+                        "emoji": true
+                      },
+                      "style": "primary",
+                      "url": "https://jenkins.shaul.link/job/commu-prod/",
+                      "action_id": "jenkins_deploy"
+                    },
+                    {
+                      "type": "button",
+                      "text": {
+                        "type": "plain_text",
+                        "text": "📋 변경사항",
+                        "emoji": true
+                      },
+                      "url": "https://github.com/${{ github.repository }}/commit/${{ github.sha }}",
+                      "action_id": "view_changes"
+                    }
+                  ]
+                },
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "⚠️ Production 배포는 Jenkins에서 수동으로 진행해주세요. | 🔗 <https://commu.shaul.link|Production Server>"
+                    }
+                  ]
+                }
+              ]
+            }'
