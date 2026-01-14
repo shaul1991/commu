@@ -4,8 +4,6 @@ pipeline {
     environment {
         PROJECT_DIR = '/opt/projects/commu'
         ENV = 'prod'
-        APP_NAME = 'commu-prod'
-        APP_PORT = '3003'
         SLACK_WEBHOOK_URL = credentials('slack-webhook-url')
     }
 
@@ -14,7 +12,7 @@ pipeline {
             steps {
                 checkout([
                     $class: 'GitSCM',
-                    branches: [[name: '*/main']],
+                    branches: [[name: '*/release']],
                     userRemoteConfigs: [[
                         url: 'git@github.com:shaul1991/commu.git',
                         credentialsId: 'home-server-deploy'
@@ -26,11 +24,11 @@ pipeline {
         stage('Inject Env File') {
             steps {
                 configFileProvider([
-                    configFile(fileId: 'commu-env-prod', targetLocation: '.env.local')
+                    configFile(fileId: 'commu-env-prod', targetLocation: '.env.prod')
                 ]) {
                     sh """
                         echo "Env file injected successfully"
-                        ls -la .env.local
+                        ls -la .env.prod
                     """
                 }
             }
@@ -39,7 +37,7 @@ pipeline {
         stage('Sync to Project Dir') {
             steps {
                 configFileProvider([
-                    configFile(fileId: 'commu-env-prod', targetLocation: '.env.local')
+                    configFile(fileId: 'commu-env-prod', targetLocation: '.env.prod')
                 ]) {
                     sh """
                         # Clean target directory (except important files)
@@ -48,6 +46,7 @@ pipeline {
                             ! -name 'node_modules' \
                             ! -name '.next' \
                             ! -name '.env.*' \
+                            ! -name '.active-slot-*' \
                             -exec rm -rf {} + 2>/dev/null || true
 
                         # Copy all files except excluded ones
@@ -55,8 +54,8 @@ pipeline {
                             tar -xf - -C ${PROJECT_DIR}/
 
                         # Copy env file to project directory with proper permissions
-                        cp .env.local ${PROJECT_DIR}/.env.local
-                        chmod 644 ${PROJECT_DIR}/.env.local
+                        cp .env.prod ${PROJECT_DIR}/.env.prod
+                        chmod 644 ${PROJECT_DIR}/.env.prod
 
                         echo "Files synced to ${PROJECT_DIR}"
                         ls -la ${PROJECT_DIR}/
@@ -65,74 +64,12 @@ pipeline {
             }
         }
 
-        stage('Build') {
+        stage('Blue-Green Deploy') {
             steps {
                 sh """
                     cd ${PROJECT_DIR}
-
-                    # Run build via Docker with Node image
-                    docker run --rm \
-                        -v ${PROJECT_DIR}:${PROJECT_DIR} \
-                        -w ${PROJECT_DIR} \
-                        --network host \
-                        node:22-alpine \
-                        sh -c "npm ci && npm run build"
-
-                    echo "Build completed!"
-                """
-            }
-        }
-
-        stage('Deploy') {
-            steps {
-                sh """
-                    cd ${PROJECT_DIR}
-
-                    # Stop and remove existing container if exists
-                    docker stop ${APP_NAME} 2>/dev/null || true
-                    docker rm ${APP_NAME} 2>/dev/null || true
-
-                    # Start new container
-                    docker run -d \
-                        --name ${APP_NAME} \
-                        --restart unless-stopped \
-                        -v ${PROJECT_DIR}:${PROJECT_DIR} \
-                        -w ${PROJECT_DIR} \
-                        -p ${APP_PORT}:3000 \
-                        --network host \
-                        node:22-alpine \
-                        sh -c "npm start"
-
-                    echo "Container ${APP_NAME} started on port ${APP_PORT}"
-
-                    # Wait for container to start
-                    sleep 5
-
-                    # Check container status
-                    docker ps --filter "name=${APP_NAME}"
-                """
-            }
-        }
-
-        stage('Health Check') {
-            steps {
-                sh """
-                    echo "Waiting for application to start..."
-                    sleep 10
-
-                    echo "Performing health check..."
-                    for i in \$(seq 1 30); do
-                        HTTP_CODE=\$(curl -s -o /dev/null -w "%{http_code}" https://commu.shaul.link || echo "000")
-                        if [ "\$HTTP_CODE" = "200" ]; then
-                            echo "Health check passed (HTTP \$HTTP_CODE)"
-                            exit 0
-                        fi
-                        echo "Attempt \$i: HTTP \$HTTP_CODE - Waiting..."
-                        sleep 2
-                    done
-
-                    echo "Health check failed after 30 attempts"
-                    exit 1
+                    chmod +x ./scripts/deploy.sh
+                    ./scripts/deploy.sh ${ENV}
                 """
             }
         }
@@ -152,7 +89,7 @@ pipeline {
                                     "type": "header",
                                     "text": {
                                         "type": "plain_text",
-                                        "text": "🎉 Commu Production 배포 완료",
+                                        "text": "Commu Production 배포 완료",
                                         "emoji": true
                                     }
                                 },
@@ -174,7 +111,7 @@ pipeline {
                                     "elements": [
                                         {
                                             "type": "mrkdwn",
-                                            "text": "🔗 <https://commu.shaul.link|Production Server>"
+                                            "text": "<https://commu.shaul.link|Production Server>"
                                         }
                                     ]
                                 }
@@ -182,7 +119,7 @@ pipeline {
                         }'
                 """
             }
-            echo "Production deployment successful!"
+            echo "Production Blue-Green deployment successful!"
         }
         failure {
             script {
@@ -195,7 +132,7 @@ pipeline {
                                     "type": "header",
                                     "text": {
                                         "type": "plain_text",
-                                        "text": "🚨 Commu Production 배포 실패",
+                                        "text": "Commu Production 배포 실패",
                                         "emoji": true
                                     }
                                 },
@@ -203,7 +140,7 @@ pipeline {
                                     "type": "section",
                                     "text": {
                                         "type": "mrkdwn",
-                                        "text": "Jenkins 로그를 확인해주세요. 롤백이 필요할 수 있습니다."
+                                        "text": "Jenkins 로그를 확인해주세요. 이전 슬롯으로 롤백이 가능합니다."
                                     }
                                 },
                                 {
@@ -213,7 +150,7 @@ pipeline {
                                             "type": "button",
                                             "text": {
                                                 "type": "plain_text",
-                                                "text": "📋 로그 확인",
+                                                "text": "로그 확인",
                                                 "emoji": true
                                             },
                                             "url": "${BUILD_URL}console"

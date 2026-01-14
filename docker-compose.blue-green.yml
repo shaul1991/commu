@@ -1,0 +1,47 @@
+# Blue-Green Application Services for Commu (Next.js)
+# Port Scheme (isolated by environment):
+#   Prod: Blue=3200, Green=3201
+#   Dev:  Blue=3202, Green=3203
+# Run with: docker compose -p commu-{env} -f docker-compose.blue-green.yml --env-file .env.{env} --profile {blue|green} up -d
+# Container names are auto-generated as: {project_name}-{service_name}-1
+
+services:
+  app-blue:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ${DOCKER_IMAGE:-commu}:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    ports:
+      - "${BLUE_PORT:-3200}:3000"
+    environment:
+      - NODE_ENV=${NODE_ENV:-production}
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    profiles:
+      - blue
+
+  app-green:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ${DOCKER_IMAGE:-commu}:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    ports:
+      - "${GREEN_PORT:-3201}:3000"
+    environment:
+      - NODE_ENV=${NODE_ENV:-production}
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    profiles:
+      - green
