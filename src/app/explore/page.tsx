@@ -21,6 +21,9 @@ export default function ExplorePage() {
   const [isChannelsLoading, setIsChannelsLoading] = useState(true);
   const [isUsersLoading, setIsUsersLoading] = useState(true);
   const [isTagsLoading, setIsTagsLoading] = useState(true);
+  const [channelsError, setChannelsError] = useState<string | null>(null);
+  const [usersError, setUsersError] = useState<string | null>(null);
+  const [tagsError, setTagsError] = useState<string | null>(null);
   const [subscribingId, setSubscribingId] = useState<string | null>(null);
   const [followingId, setFollowingId] = useState<string | null>(null);
 
@@ -28,33 +31,39 @@ export default function ExplorePage() {
     const loadData = async () => {
       // 채널 로드
       setIsChannelsLoading(true);
+      setChannelsError(null);
       try {
         const channelData = await fetchPopularChannels(6);
         setChannels(channelData);
       } catch (error) {
         console.error('채널 로드 실패:', error);
+        setChannelsError('채널을 불러오는데 실패했습니다.');
       } finally {
         setIsChannelsLoading(false);
       }
 
       // 사용자 로드
       setIsUsersLoading(true);
+      setUsersError(null);
       try {
         const userData = await getRecommendedUsers(3);
         setUsers(userData);
       } catch (error) {
         console.error('사용자 로드 실패:', error);
+        setUsersError('사용자를 불러오는데 실패했습니다.');
       } finally {
         setIsUsersLoading(false);
       }
 
       // 트렌딩 태그 로드
       setIsTagsLoading(true);
+      setTagsError(null);
       try {
         const tagsData = await getTrendingTags(8);
         setTrendingTags(tagsData);
       } catch (error) {
         console.error('트렌딩 태그 로드 실패:', error);
+        setTagsError('태그를 불러오는데 실패했습니다.');
       } finally {
         setIsTagsLoading(false);
       }
@@ -151,6 +160,14 @@ export default function ExplorePage() {
               </div>
             ))}
           </div>
+        ) : channelsError ? (
+          <div className="text-sm text-[var(--color-error-500)]">
+            {channelsError}
+          </div>
+        ) : channels.length === 0 ? (
+          <div className="text-sm text-[var(--text-tertiary)]">
+            인기 채널이 없습니다.
+          </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {channels.map((channel) => (
@@ -179,6 +196,10 @@ export default function ExplorePage() {
             {Array.from({ length: 8 }).map((_, i) => (
               <Skeleton key={i} className="w-20 h-8 rounded-full" />
             ))}
+          </div>
+        ) : tagsError ? (
+          <div className="text-sm text-[var(--color-error-500)]">
+            {tagsError}
           </div>
         ) : trendingTags.length === 0 ? (
           <div className="text-sm text-[var(--text-tertiary)]">
@@ -229,6 +250,14 @@ export default function ExplorePage() {
                 </div>
               </div>
             ))}
+          </div>
+        ) : usersError ? (
+          <div className="text-sm text-[var(--color-error-500)]">
+            {usersError}
+          </div>
+        ) : users.length === 0 ? (
+          <div className="text-sm text-[var(--text-tertiary)]">
+            추천 사용자가 없습니다.
           </div>
         ) : (
           <div className="space-y-4">
