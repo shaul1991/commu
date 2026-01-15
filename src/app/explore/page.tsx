@@ -1,47 +1,90 @@
+'use client';
+
+import { useState, useEffect } from 'react';
 import { MainLayout } from '@/components/templates';
-import { Button } from '@/components/atoms';
+import { ChannelCard, UserCard } from '@/components/molecules';
+import { Skeleton } from '@/components/atoms';
 import { Compass, Search, Users, Hash, TrendingUp } from 'lucide-react';
 import Link from 'next/link';
-
-// Sample channels data
-const popularChannels = [
-  { slug: 'tech', name: '기술', members: 12453, posts: 8923, color: 'primary' },
-  { slug: 'career', name: '커리어', members: 8721, posts: 5432, color: 'success' },
-  { slug: 'daily', name: '일상', members: 15234, posts: 12543, color: 'warning' },
-  { slug: 'question', name: '질문', members: 9876, posts: 7654, color: 'info' },
-  { slug: 'news', name: '뉴스', members: 6543, posts: 4321, color: 'error' },
-  { slug: 'review', name: '리뷰', members: 4532, posts: 2345, color: 'secondary' },
-];
-
-// Sample trending tags
-const trendingTags = [
-  { name: 'Next.js', count: 234 },
-  { name: 'React', count: 189 },
-  { name: 'TypeScript', count: 156 },
-  { name: '취업', count: 143 },
-  { name: 'AI', count: 128 },
-  { name: '이직', count: 98 },
-  { name: 'ChatGPT', count: 87 },
-  { name: '연봉', count: 76 },
-];
-
-// Sample recommended users
-const recommendedUsers = [
-  { name: '개발자김', username: 'devkim', followers: 1234, bio: '풀스택 개발자 | Next.js 애호가' },
-  { name: 'AI연구자', username: 'airesearcher', followers: 2345, bio: 'ML/DL 연구 | 논문 리뷰' },
-  { name: '커리어코치', username: 'careercoach', followers: 3456, bio: 'IT 채용 담당자 | 커리어 조언' },
-];
-
-const colorMap: Record<string, string> = {
-  primary: 'bg-[var(--color-primary-100)] text-[var(--color-primary-600)]',
-  success: 'bg-[var(--color-success-50)] text-[var(--color-success-600)]',
-  warning: 'bg-[var(--color-warning-50)] text-[var(--color-warning-600)]',
-  info: 'bg-[var(--color-info-50)] text-[var(--color-info-600)]',
-  error: 'bg-[var(--color-error-50)] text-[var(--color-error-600)]',
-  secondary: 'bg-[var(--bg-muted)] text-[var(--text-secondary)]',
-};
+import { useRouter } from 'next/navigation';
+import { fetchPopularChannels, toggleChannelSubscription } from '@/lib/api/channels';
+import { getRecommendedUsers, toggleUserFollow, type RecommendedUser } from '@/lib/api/users';
+import { mockTrendingTags } from '@/lib/mock/channels';
+import type { Channel } from '@/types';
 
 export default function ExplorePage() {
+  const router = useRouter();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [channels, setChannels] = useState<Channel[]>([]);
+  const [users, setUsers] = useState<RecommendedUser[]>([]);
+  const [isChannelsLoading, setIsChannelsLoading] = useState(true);
+  const [isUsersLoading, setIsUsersLoading] = useState(true);
+  const [subscribingId, setSubscribingId] = useState<string | null>(null);
+  const [followingId, setFollowingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const loadData = async () => {
+      // 채널 로드
+      setIsChannelsLoading(true);
+      try {
+        const channelData = await fetchPopularChannels(6);
+        setChannels(channelData);
+      } catch (error) {
+        console.error('채널 로드 실패:', error);
+      } finally {
+        setIsChannelsLoading(false);
+      }
+
+      // 사용자 로드
+      setIsUsersLoading(true);
+      try {
+        const userData = await getRecommendedUsers(3);
+        setUsers(userData);
+      } catch (error) {
+        console.error('사용자 로드 실패:', error);
+      } finally {
+        setIsUsersLoading(false);
+      }
+    };
+
+    loadData();
+  }, []);
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+    }
+  };
+
+  const handleSubscribeToggle = async (channel: Channel) => {
+    setSubscribingId(channel.id);
+    try {
+      const updated = await toggleChannelSubscription(channel.slug);
+      setChannels((prev) =>
+        prev.map((c) => (c.id === channel.id ? updated : c))
+      );
+    } catch (error) {
+      console.error('구독 상태 변경 실패:', error);
+    } finally {
+      setSubscribingId(null);
+    }
+  };
+
+  const handleFollowToggle = async (user: RecommendedUser) => {
+    setFollowingId(user.id);
+    try {
+      const updated = await toggleUserFollow(user.id);
+      setUsers((prev) =>
+        prev.map((u) => (u.id === user.id ? updated : u))
+      );
+    } catch (error) {
+      console.error('팔로우 상태 변경 실패:', error);
+    } finally {
+      setFollowingId(null);
+    }
+  };
+
   return (
     <MainLayout>
       {/* Page Header */}
@@ -56,14 +99,16 @@ export default function ExplorePage() {
       </div>
 
       {/* Search Bar */}
-      <div className="relative mb-8">
+      <form onSubmit={handleSearch} className="relative mb-8">
         <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--text-tertiary)]" />
         <input
           type="text"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="채널, 태그, 사용자 검색..."
           className="w-full pl-12 pr-4 py-3 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-lg)] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-500)] focus:border-transparent"
         />
-      </div>
+      </form>
 
       {/* Popular Channels Section */}
       <section className="mb-8">
@@ -76,28 +121,36 @@ export default function ExplorePage() {
             전체 보기
           </Link>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {popularChannels.map((channel) => (
-            <Link
-              key={channel.slug}
-              href={`/channel/${channel.slug}`}
-              className="bg-[var(--bg-surface)] rounded-[var(--radius-lg)] border border-[var(--border-default)] p-4 hover:border-[var(--border-strong)] transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                <span className={`w-10 h-10 rounded-[var(--radius-md)] flex items-center justify-center text-lg font-bold ${colorMap[channel.color]}`}>
-                  {channel.name[0]}
-                </span>
-                <div className="flex-1">
-                  <h3 className="font-medium text-[var(--text-primary)]">{channel.name}</h3>
-                  <p className="text-sm text-[var(--text-tertiary)]">
-                    {channel.members.toLocaleString()}명 · 게시글 {channel.posts.toLocaleString()}개
-                  </p>
+        {isChannelsLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div
+                key={i}
+                className="bg-[var(--bg-surface)] rounded-[var(--radius-lg)] border border-[var(--border-default)] p-4"
+              >
+                <div className="flex items-center gap-3">
+                  <Skeleton className="w-10 h-10 rounded-[var(--radius-md)]" />
+                  <div className="flex-1">
+                    <Skeleton className="h-4 w-20 mb-2" />
+                    <Skeleton className="h-3 w-32" />
+                  </div>
                 </div>
-                <Button variant="secondary" size="sm">구독</Button>
               </div>
-            </Link>
-          ))}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {channels.map((channel) => (
+              <ChannelCard
+                key={channel.id}
+                channel={channel}
+                variant="compact"
+                onSubscribeToggle={handleSubscribeToggle}
+                isSubscribing={subscribingId === channel.id}
+              />
+            ))}
+          </div>
+        )}
       </section>
 
       {/* Trending Tags Section */}
@@ -109,10 +162,10 @@ export default function ExplorePage() {
           </h2>
         </div>
         <div className="flex flex-wrap gap-2">
-          {trendingTags.map((tag) => (
+          {mockTrendingTags.map((tag) => (
             <Link
               key={tag.name}
-              href={`/tag/${tag.name}`}
+              href={`/search?q=${encodeURIComponent(tag.name)}`}
               className="inline-flex items-center gap-1 px-3 py-1.5 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-full text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:border-[var(--border-strong)] transition-colors"
             >
               <span>#</span>
@@ -130,35 +183,40 @@ export default function ExplorePage() {
             <Users className="w-5 h-5" />
             추천 사용자
           </h2>
-          <Link href="/users" className="text-sm text-[var(--color-primary-500)] hover:underline">
+          <Link href="/recommend-users" className="text-sm text-[var(--color-primary-500)] hover:underline">
             전체 보기
           </Link>
         </div>
-        <div className="space-y-4">
-          {recommendedUsers.map((user) => (
-            <div
-              key={user.username}
-              className="bg-[var(--bg-surface)] rounded-[var(--radius-lg)] border border-[var(--border-default)] p-4 hover:border-[var(--border-strong)] transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-full bg-[var(--color-primary-100)] flex items-center justify-center text-lg font-bold text-[var(--color-primary-600)]">
-                  {user.name[0]}
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-medium text-[var(--text-primary)]">{user.name}</h3>
-                    <span className="text-sm text-[var(--text-tertiary)]">@{user.username}</span>
+        {isUsersLoading ? (
+          <div className="space-y-4">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div
+                key={i}
+                className="bg-[var(--bg-surface)] rounded-[var(--radius-lg)] border border-[var(--border-default)] p-4"
+              >
+                <div className="flex items-center gap-3">
+                  <Skeleton className="w-12 h-12 rounded-full" />
+                  <div className="flex-1">
+                    <Skeleton className="h-4 w-24 mb-2" />
+                    <Skeleton className="h-3 w-full mb-2" />
+                    <Skeleton className="h-3 w-20" />
                   </div>
-                  <p className="text-sm text-[var(--text-secondary)] mt-0.5">{user.bio}</p>
-                  <p className="text-xs text-[var(--text-tertiary)] mt-1">
-                    팔로워 {user.followers.toLocaleString()}명
-                  </p>
                 </div>
-                <Button variant="primary" size="sm">팔로우</Button>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {users.map((user) => (
+              <UserCard
+                key={user.id}
+                user={user}
+                onFollowToggle={handleFollowToggle}
+                isFollowing={followingId === user.id}
+              />
+            ))}
+          </div>
+        )}
       </section>
     </MainLayout>
   );

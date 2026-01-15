@@ -4,6 +4,12 @@
  */
 
 import { apiClient } from './client';
+import { shouldUseMock } from '../env';
+import {
+  getMockSearchResults,
+  getMockSearchSuggestions,
+  getMockTrendingSearches,
+} from '../mock/search';
 import type { PostSummary, User, ApiResponse } from '@/types';
 
 export interface SearchResult {
@@ -30,6 +36,16 @@ export async function search(
   query: string,
   type?: 'all' | 'posts' | 'users' | 'tags'
 ): Promise<ApiResponse<SearchResult>> {
+  // Mock 모드
+  if (shouldUseMock()) {
+    const mockResult = getMockSearchResults(query, type || 'all');
+    return {
+      success: true,
+      data: mockResult as SearchResult,
+    };
+  }
+
+  // 실제 API 호출
   const params = new URLSearchParams({ q: query });
   if (type && type !== 'all') {
     params.append('type', type);
@@ -56,6 +72,16 @@ export async function search(
 export async function searchSuggest(
   query: string
 ): Promise<ApiResponse<SearchSuggestion[]>> {
+  // Mock 모드
+  if (shouldUseMock()) {
+    const suggestions = getMockSearchSuggestions(query);
+    return {
+      success: true,
+      data: suggestions.map((text) => ({ text, type: 'query' as const })),
+    };
+  }
+
+  // 실제 API 호출
   const response = await apiClient.get<SearchSuggestion[]>(
     `/search/suggest?q=${encodeURIComponent(query)}`,
     { skipAuth: true }
@@ -75,6 +101,20 @@ export async function searchSuggest(
  * 인기 검색어 조회
  */
 export async function getTrendingSearches(): Promise<ApiResponse<TrendingSearch[]>> {
+  // Mock 모드
+  if (shouldUseMock()) {
+    const trending = getMockTrendingSearches();
+    return {
+      success: true,
+      data: trending.map((keyword, index) => ({
+        keyword,
+        count: 100 - index * 10,
+        trend: 'stable' as const,
+      })),
+    };
+  }
+
+  // 실제 API 호출
   const response = await apiClient.get<TrendingSearch[]>(
     '/search/trending',
     { skipAuth: true }
