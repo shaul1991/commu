@@ -4,6 +4,8 @@
  */
 
 import { apiClient } from './client';
+import { shouldUseMock } from '../env';
+import { getMockRecommendedUsers, toggleMockUserFollow, type RecommendedUser } from '../mock/users';
 import type { User, PostSummary, ApiResponse, PaginatedResponse } from '@/types';
 
 /**
@@ -106,3 +108,54 @@ export async function getUserProfile(
     data: response.data!,
   };
 }
+
+/**
+ * 추천 사용자 목록 조회
+ */
+export async function getRecommendedUsers(
+  limit: number = 10
+): Promise<RecommendedUser[]> {
+  // Mock 모드
+  if (shouldUseMock()) {
+    return getMockRecommendedUsers(limit);
+  }
+
+  // 실제 API 호출
+  const params = new URLSearchParams({ limit: String(limit) });
+  const response = await apiClient.get<RecommendedUser[]>(
+    `/users/recommend?${params.toString()}`,
+    { skipAuth: true }
+  );
+
+  if (!response.success || !response.data) {
+    throw new Error(response.error?.message || '추천 사용자를 불러오는데 실패했습니다.');
+  }
+
+  return response.data;
+}
+
+/**
+ * 사용자 팔로우 토글
+ */
+export async function toggleUserFollow(userId: string): Promise<RecommendedUser> {
+  // Mock 모드
+  if (shouldUseMock()) {
+    const user = toggleMockUserFollow(userId);
+    if (!user) {
+      throw new Error('사용자를 찾을 수 없습니다.');
+    }
+    return user;
+  }
+
+  // 실제 API 호출
+  const response = await apiClient.post<RecommendedUser>(`/users/${userId}/follow`);
+
+  if (!response.success || !response.data) {
+    throw new Error(response.error?.message || '팔로우 상태 변경에 실패했습니다.');
+  }
+
+  return response.data;
+}
+
+// RecommendedUser 타입 re-export
+export type { RecommendedUser };
