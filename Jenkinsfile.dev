@@ -15,7 +15,7 @@ pipeline {
                     branches: [[name: '*/develop']],
                     userRemoteConfigs: [[
                         url: 'git@github.com:shaul1991/commu.git',
-                        credentialsId: 'github-ssh-key'
+                        credentialsId: 'home-server-deploy'
                     ]]
                 ])
             }
@@ -24,11 +24,11 @@ pipeline {
         stage('Inject Env File') {
             steps {
                 configFileProvider([
-                    configFile(fileId: 'commu-env-dev', targetLocation: '.env.local')
+                    configFile(fileId: 'commu-env-dev', targetLocation: '.env.dev')
                 ]) {
                     sh """
                         echo "Env file injected successfully"
-                        ls -la .env.local
+                        ls -la .env.dev
                     """
                 }
             }
@@ -37,7 +37,7 @@ pipeline {
         stage('Sync to Project Dir') {
             steps {
                 configFileProvider([
-                    configFile(fileId: 'commu-env-dev', targetLocation: '.env.local')
+                    configFile(fileId: 'commu-env-dev', targetLocation: '.env.dev')
                 ]) {
                     sh """
                         # Clean target directory (except important files)
@@ -46,6 +46,7 @@ pipeline {
                             ! -name 'node_modules' \
                             ! -name '.next' \
                             ! -name '.env.*' \
+                            ! -name '.active-slot-*' \
                             -exec rm -rf {} + 2>/dev/null || true
 
                         # Copy all files except excluded ones
@@ -53,8 +54,8 @@ pipeline {
                             tar -xf - -C ${PROJECT_DIR}/
 
                         # Copy env file to project directory with proper permissions
-                        cp .env.local ${PROJECT_DIR}/.env.local
-                        chmod 644 ${PROJECT_DIR}/.env.local
+                        cp .env.dev ${PROJECT_DIR}/.env.dev
+                        chmod 644 ${PROJECT_DIR}/.env.dev
 
                         echo "Files synced to ${PROJECT_DIR}"
                         ls -la ${PROJECT_DIR}/
@@ -63,40 +64,12 @@ pipeline {
             }
         }
 
-        stage('Install Dependencies') {
+        stage('Blue-Green Deploy') {
             steps {
                 sh """
                     cd ${PROJECT_DIR}
-                    npm ci
-                """
-            }
-        }
-
-        stage('Build') {
-            steps {
-                sh """
-                    cd ${PROJECT_DIR}
-                    npm run build
-                """
-            }
-        }
-
-        stage('Deploy') {
-            steps {
-                sh """
-                    cd ${PROJECT_DIR}
-
-                    # PM2로 실행 중인 프로세스 확인 및 재시작
-                    if pm2 list | grep -q "commu-dev"; then
-                        echo "Restarting existing PM2 process..."
-                        pm2 restart commu-dev
-                    else
-                        echo "Starting new PM2 process..."
-                        pm2 start npm --name "commu-dev" -- start
-                    fi
-
-                    # 프로세스 상태 확인
-                    pm2 status commu-dev
+                    chmod +x ./scripts/deploy.sh
+                    ./scripts/deploy.sh ${ENV}
                 """
             }
         }
@@ -116,7 +89,7 @@ pipeline {
                                     "type": "header",
                                     "text": {
                                         "type": "plain_text",
-                                        "text": "✅ Commu Dev 배포 완료",
+                                        "text": "Commu Dev 배포 완료",
                                         "emoji": true
                                     }
                                 },
@@ -138,7 +111,7 @@ pipeline {
                                     "elements": [
                                         {
                                             "type": "mrkdwn",
-                                            "text": "🔗 <https://dev-commu.shaul.link|Dev Server>"
+                                            "text": "<https://dev-commu.shaul.link|Dev Server>"
                                         }
                                     ]
                                 }
@@ -146,7 +119,7 @@ pipeline {
                         }'
                 """
             }
-            echo "Dev deployment successful!"
+            echo "Dev Blue-Green deployment successful!"
         }
         failure {
             script {
@@ -159,7 +132,7 @@ pipeline {
                                     "type": "header",
                                     "text": {
                                         "type": "plain_text",
-                                        "text": "❌ Commu Dev 배포 실패",
+                                        "text": "Commu Dev 배포 실패",
                                         "emoji": true
                                     }
                                 },
@@ -177,7 +150,7 @@ pipeline {
                                             "type": "button",
                                             "text": {
                                                 "type": "plain_text",
-                                                "text": "📋 로그 확인",
+                                                "text": "로그 확인",
                                                 "emoji": true
                                             },
                                             "url": "${BUILD_URL}console"

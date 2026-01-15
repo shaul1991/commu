@@ -1,10 +1,12 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { MainLayout } from '@/components/templates';
 import { Button, Badge } from '@/components/atoms';
 import { PenLine, ImageIcon, Link2, Hash, X, Eye, Send, Loader2 } from 'lucide-react';
 import { useRequireAuth } from '@/hooks';
+import { useCreatePost } from '@/hooks/usePost';
 
 const channels = [
   { slug: 'general', name: '일반' },
@@ -15,7 +17,9 @@ const channels = [
 ];
 
 export default function WritePage() {
+  const router = useRouter();
   const { isLoading, isAuthenticated } = useRequireAuth();
+  const createPostMutation = useCreatePost();
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [selectedChannel, setSelectedChannel] = useState('');
@@ -50,6 +54,28 @@ export default function WritePage() {
     }
   };
 
+  const handleSubmit = async () => {
+    if (!title || !content || !selectedChannel) return;
+
+    createPostMutation.mutate(
+      {
+        title,
+        content,
+        channelSlug: selectedChannel,
+        tags,
+      },
+      {
+        onSuccess: (response) => {
+          if (response.data?.id) {
+            router.push(`/posts/${response.data.id}`);
+          } else {
+            router.push('/');
+          }
+        },
+      }
+    );
+  };
+
   return (
     <MainLayout>
       {/* Page Header */}
@@ -64,9 +90,18 @@ export default function WritePage() {
               <Eye className="w-4 h-4 mr-1" />
               미리보기
             </Button>
-            <Button variant="primary" size="sm" disabled={!title || !content || !selectedChannel}>
-              <Send className="w-4 h-4 mr-1" />
-              게시하기
+            <Button
+              variant="primary"
+              size="sm"
+              disabled={!title || !content || !selectedChannel || createPostMutation.isPending}
+              onClick={handleSubmit}
+            >
+              {createPostMutation.isPending ? (
+                <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+              ) : (
+                <Send className="w-4 h-4 mr-1" />
+              )}
+              {createPostMutation.isPending ? '게시 중...' : '게시하기'}
             </Button>
           </div>
         </div>
@@ -178,8 +213,13 @@ export default function WritePage() {
         {/* Submit Buttons (Mobile) */}
         <div className="flex gap-3 pt-4 border-t border-[var(--border-default)] md:hidden">
           <Button variant="secondary" className="flex-1">임시저장</Button>
-          <Button variant="primary" className="flex-1" disabled={!title || !content || !selectedChannel}>
-            게시하기
+          <Button
+            variant="primary"
+            className="flex-1"
+            disabled={!title || !content || !selectedChannel || createPostMutation.isPending}
+            onClick={handleSubmit}
+          >
+            {createPostMutation.isPending ? '게시 중...' : '게시하기'}
           </Button>
         </div>
       </div>

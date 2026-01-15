@@ -1,73 +1,16 @@
 'use client';
 
-import { useState } from 'react';
 import { MainLayout } from '@/components/templates';
-import { Button, Avatar } from '@/components/atoms';
-import { Settings, User, Bell, Shield, Palette, LogOut, ChevronRight, Moon, Sun, Monitor, Loader2 } from 'lucide-react';
-import Link from 'next/link';
-import { useRequireAuth, useAuth } from '@/hooks';
+import { Settings, Palette, Moon, Sun, Monitor, Info, ExternalLink } from 'lucide-react';
+import { useTheme } from '@/contexts/ThemeContext';
 
 type ThemeMode = 'light' | 'dark' | 'system';
 
-interface SettingItem {
-  icon: typeof User;
-  label: string;
-  description: string;
-  href: string;
-}
-
-const settingsMenu: SettingItem[] = [
-  {
-    icon: User,
-    label: '프로필 설정',
-    description: '이름, 소개, 프로필 사진 변경',
-    href: '/settings/profile',
-  },
-  {
-    icon: Bell,
-    label: '알림 설정',
-    description: '알림 수신 방법 및 유형 관리',
-    href: '/settings/notifications',
-  },
-  {
-    icon: Shield,
-    label: '개인정보 및 보안',
-    description: '비밀번호 변경, 2단계 인증',
-    href: '/settings/security',
-  },
-];
-
 export default function SettingsPage() {
-  const { user, isLoading, isAuthenticated } = useRequireAuth();
-  const { logout } = useAuth();
-  const [theme, setTheme] = useState<ThemeMode>('system');
-
-  // 사용자 표시 정보 계산
-  const displayName = user?.displayName ||
-    (user?.firstName && user?.lastName ? `${user.lastName}${user.firstName}` : null) ||
-    user?.email?.split('@')[0] ||
-    '사용자';
-
-  const username = user?.email?.split('@')[0] || 'user';
-
-  if (isLoading || !isAuthenticated) {
-    return (
-      <MainLayout>
-        <div className="flex items-center justify-center min-h-[50vh]">
-          <Loader2 className="w-8 h-8 animate-spin text-[var(--color-primary-500)]" />
-        </div>
-      </MainLayout>
-    );
-  }
+  const { theme, setTheme } = useTheme();
 
   const handleThemeChange = (newTheme: ThemeMode) => {
     setTheme(newTheme);
-    // In real implementation, this would update the theme
-    if (newTheme === 'dark') {
-      document.documentElement.classList.add('dark');
-    } else if (newTheme === 'light') {
-      document.documentElement.classList.remove('dark');
-    }
   };
 
   return (
@@ -79,54 +22,9 @@ export default function SettingsPage() {
           <h1 className="text-2xl font-bold text-[var(--text-primary)]">설정</h1>
         </div>
         <p className="mt-1 text-[var(--text-secondary)]">
-          계정 및 앱 설정을 관리하세요
+          앱 환경을 설정하세요
         </p>
       </div>
-
-      {/* Account Section */}
-      <section className="mb-8">
-        <h2 className="text-sm font-semibold text-[var(--text-tertiary)] uppercase tracking-wider mb-3">
-          계정
-        </h2>
-        <div className="bg-[var(--bg-surface)] rounded-[var(--radius-lg)] border border-[var(--border-default)] overflow-hidden">
-          {/* Current User */}
-          <div className="p-4 border-b border-[var(--border-default)]">
-            <div className="flex items-center gap-4">
-              <Avatar name={displayName} src={user?.profileImage} size="lg" />
-              <div className="flex-1">
-                <p className="font-medium text-[var(--text-primary)]">{displayName}</p>
-                <p className="text-sm text-[var(--text-tertiary)]">@{username}</p>
-              </div>
-              <Link href="/settings/profile">
-                <Button variant="secondary" size="sm">편집</Button>
-              </Link>
-            </div>
-          </div>
-
-          {/* Settings Menu */}
-          {settingsMenu.map((item, index) => {
-            const Icon = item.icon;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`flex items-center gap-4 p-4 hover:bg-[var(--bg-hover)] transition-colors ${
-                  index < settingsMenu.length - 1 ? 'border-b border-[var(--border-default)]' : ''
-                }`}
-              >
-                <div className="p-2 bg-[var(--bg-muted)] rounded-[var(--radius-md)]">
-                  <Icon className="w-5 h-5 text-[var(--text-secondary)]" />
-                </div>
-                <div className="flex-1">
-                  <p className="font-medium text-[var(--text-primary)]">{item.label}</p>
-                  <p className="text-sm text-[var(--text-tertiary)]">{item.description}</p>
-                </div>
-                <ChevronRight className="w-5 h-5 text-[var(--text-tertiary)]" />
-              </Link>
-            );
-          })}
-        </div>
-      </section>
 
       {/* Appearance Section */}
       <section className="mb-8">
@@ -141,6 +39,7 @@ export default function SettingsPage() {
           <div className="grid grid-cols-3 gap-3">
             <button
               onClick={() => handleThemeChange('light')}
+              aria-label="라이트 모드"
               className={`p-4 rounded-[var(--radius-md)] border-2 transition-colors flex flex-col items-center gap-2 ${
                 theme === 'light'
                   ? 'border-[var(--color-primary-500)] bg-[var(--color-primary-50)]'
@@ -152,6 +51,7 @@ export default function SettingsPage() {
             </button>
             <button
               onClick={() => handleThemeChange('dark')}
+              aria-label="다크 모드"
               className={`p-4 rounded-[var(--radius-md)] border-2 transition-colors flex flex-col items-center gap-2 ${
                 theme === 'dark'
                   ? 'border-[var(--color-primary-500)] bg-[var(--color-primary-50)]'
@@ -163,6 +63,7 @@ export default function SettingsPage() {
             </button>
             <button
               onClick={() => handleThemeChange('system')}
+              aria-label="시스템 설정 따르기"
               className={`p-4 rounded-[var(--radius-md)] border-2 transition-colors flex flex-col items-center gap-2 ${
                 theme === 'system'
                   ? 'border-[var(--color-primary-500)] bg-[var(--color-primary-50)]'
@@ -176,41 +77,42 @@ export default function SettingsPage() {
         </div>
       </section>
 
-      {/* Danger Zone */}
+      {/* App Info Section */}
       <section>
-        <h2 className="text-sm font-semibold text-[var(--color-error-500)] uppercase tracking-wider mb-3">
-          위험 구역
+        <h2 className="text-sm font-semibold text-[var(--text-tertiary)] uppercase tracking-wider mb-3 flex items-center gap-2">
+          <Info className="w-4 h-4" />
+          앱 정보
         </h2>
-        <div className="bg-[var(--bg-surface)] rounded-[var(--radius-lg)] border border-[var(--color-error-200)] p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium text-[var(--text-primary)]">로그아웃</p>
-              <p className="text-sm text-[var(--text-tertiary)]">
-                현재 기기에서 로그아웃합니다
-              </p>
-            </div>
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={logout}
-              className="text-[var(--color-error-500)] hover:bg-[var(--color-error-50)]"
-            >
-              <LogOut className="w-4 h-4 mr-1" />
-              로그아웃
-            </Button>
+        <div className="bg-[var(--bg-surface)] rounded-[var(--radius-lg)] border border-[var(--border-default)] overflow-hidden">
+          {/* Version */}
+          <div className="flex items-center justify-between p-4 border-b border-[var(--border-default)]">
+            <span className="text-[var(--text-primary)]">버전</span>
+            <span className="text-[var(--text-tertiary)]">v0.1.0</span>
           </div>
+
+          {/* Terms of Service */}
+          <a
+            href="/terms"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-between p-4 border-b border-[var(--border-default)] hover:bg-[var(--bg-hover)] transition-colors"
+          >
+            <span className="text-[var(--text-primary)]">이용약관</span>
+            <ExternalLink className="w-4 h-4 text-[var(--text-tertiary)]" />
+          </a>
+
+          {/* Privacy Policy */}
+          <a
+            href="/privacy"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-between p-4 hover:bg-[var(--bg-hover)] transition-colors"
+          >
+            <span className="text-[var(--text-primary)]">개인정보처리방침</span>
+            <ExternalLink className="w-4 h-4 text-[var(--text-tertiary)]" />
+          </a>
         </div>
       </section>
-
-      {/* App Info */}
-      <div className="mt-8 text-center text-sm text-[var(--text-tertiary)]">
-        <p>커뮤 v0.1.0</p>
-        <p className="mt-1">
-          <a href="/terms" className="hover:underline">이용약관</a>
-          {' · '}
-          <a href="/privacy" className="hover:underline">개인정보처리방침</a>
-        </p>
-      </div>
     </MainLayout>
   );
 }
