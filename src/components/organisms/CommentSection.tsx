@@ -252,6 +252,7 @@ function CommentItem({
       return;
     }
 
+    if (updateComment.isPending) return;
     updateComment.mutate(
       { commentId: comment.id, content: editContent.trim(), postId },
       { onSuccess: () => setIsEditing(false) }
@@ -259,6 +260,7 @@ function CommentItem({
   };
 
   const handleDelete = () => {
+    if (deleteComment.isPending) return;
     deleteComment.mutate(
       { commentId: comment.id, postId },
       { onSuccess: () => setShowDeleteModal(false) }
@@ -266,6 +268,7 @@ function CommentItem({
   };
 
   const handleLike = () => {
+    if (toggleLike.isPending) return;
     toggleLike.mutate({ commentId: comment.id, postId });
   };
 
