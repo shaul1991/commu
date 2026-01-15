@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { Send, MoreHorizontal, Pencil, Trash2, ArrowDownAZ, Clock, ThumbsUp } from 'lucide-react';
 import { Avatar, Button, CommentListSkeleton } from '@/components/atoms';
 import { LikeIconButton, ConfirmModal } from '@/components/molecules';
@@ -239,6 +239,7 @@ function CommentItem({
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [editContent, setEditContent] = useState(comment.content);
   const [showMenu, setShowMenu] = useState(false);
+  const isDeletingRef = useRef(false);
 
   const updateComment = useUpdateComment();
   const deleteComment = useDeleteComment();
@@ -260,10 +261,16 @@ function CommentItem({
   };
 
   const handleDelete = () => {
-    if (deleteComment.isPending) return;
+    if (isDeletingRef.current || deleteComment.isPending) return;
+    isDeletingRef.current = true;
     deleteComment.mutate(
       { commentId: comment.id, postId },
-      { onSuccess: () => setShowDeleteModal(false) }
+      {
+        onSuccess: () => setShowDeleteModal(false),
+        onSettled: () => {
+          isDeletingRef.current = false;
+        },
+      }
     );
   };
 
