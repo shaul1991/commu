@@ -39,6 +39,23 @@ export default function WritePage() {
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
 
+  // 드래그 앤 드롭 핸들러 (본문 영역) - 훅은 조건문 전에 선언해야 함
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    // 파일은 ImageUploadButton에서 처리
+  }, []);
+
   // 인증 로딩 중
   if (isLoading || !isAuthenticated) {
     return (
@@ -78,23 +95,6 @@ export default function WritePage() {
       }
     );
   };
-
-  // 드래그 앤 드롭 핸들러 (본문 영역)
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragOver(true);
-  }, []);
-
-  const handleDragLeave = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragOver(false);
-  }, []);
-
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragOver(false);
-    // 파일은 ImageUploadButton에서 처리
-  }, []);
 
   const isFormValid = title && content && selectedChannel;
 
