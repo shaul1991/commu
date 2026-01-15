@@ -13,7 +13,7 @@ import {
   deleteComment,
   toggleCommentLike,
 } from '@/lib/api/comments';
-import type { Comment } from '@/types';
+import type { Comment, ApiResponse } from '@/types';
 import { toast } from '@/stores/uiStore';
 
 /**
@@ -134,11 +134,12 @@ export function useToggleCommentLike() {
         queryKey: queryKeys.comments.list(postId),
       });
 
-      const previousComments = queryClient.getQueryData<Comment[]>(
+      // getQueryData는 캐시된 원본 데이터를 반환 (select 변환 전)
+      const previousData = queryClient.getQueryData<ApiResponse<Comment[]>>(
         queryKeys.comments.list(postId)
       );
 
-      if (previousComments) {
+      if (previousData?.data) {
         // 댓글 찾아서 optimistic update
         const updateCommentsOptimistically = (
           comments: Comment[]
@@ -161,19 +162,22 @@ export function useToggleCommentLike() {
           });
         };
 
-        queryClient.setQueryData(
+        queryClient.setQueryData<ApiResponse<Comment[]>>(
           queryKeys.comments.list(postId),
-          updateCommentsOptimistically(previousComments)
+          {
+            ...previousData,
+            data: updateCommentsOptimistically(previousData.data),
+          }
         );
       }
 
-      return { previousComments };
+      return { previousData };
     },
-    onError: (err, variables, context) => {
-      if (context?.previousComments) {
+    onError: (_err, variables, context) => {
+      if (context?.previousData) {
         queryClient.setQueryData(
           queryKeys.comments.list(variables.postId),
-          context.previousComments
+          context.previousData
         );
       }
       toast.error('좋아요 처리 중 오류가 발생했습니다.');
