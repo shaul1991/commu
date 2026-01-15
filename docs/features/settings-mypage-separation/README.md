@@ -40,6 +40,10 @@
 - `src/app/settings/page.tsx` - 인증 제거, 계정 섹션 제거
 - `src/app/settings/__tests__/page.test.tsx` - 테스트 업데이트
 - `src/app/profile/page.tsx` - /mypage 리다이렉트
+- `src/app/profile/__tests__/page.test.tsx` - 리다이렉트 테스트로 변경
+
+### 설정
+- `playwright.config.ts` - E2E 테스트 설정
 
 ## 테스트 결과
 
@@ -47,6 +51,8 @@
 |------------|------|----------|
 | Settings Unit Test | ✅ Pass | 14 |
 | MyPage Unit Test | ✅ Pass | 17 |
+| Profile Unit Test | ✅ Pass | 1 |
+| E2E Test | ✅ Pass | 15 |
 | TypeScript Check | ✅ Pass | - |
 | Build | ✅ Pass | - |
 
@@ -73,9 +79,9 @@
 ## 배포 체크리스트
 
 - [x] 코드 작성 완료
-- [x] 단위 테스트 통과
+- [x] 단위 테스트 통과 (32 tests)
 - [x] 빌드 성공
-- [ ] E2E 테스트 실행
+- [x] E2E 테스트 실행 (15 tests)
 - [ ] 코드 리뷰
 - [ ] Staging 배포
 - [ ] Production 배포
