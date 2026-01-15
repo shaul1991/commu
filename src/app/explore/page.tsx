@@ -9,7 +9,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { fetchPopularChannels, toggleChannelSubscription } from '@/lib/api/channels';
 import { getRecommendedUsers, toggleUserFollow, type RecommendedUser } from '@/lib/api/users';
-import { mockTrendingTags } from '@/lib/mock/channels';
+import { getTrendingTags, type TrendingTag } from '@/lib/api/tags';
 import type { Channel } from '@/types';
 
 export default function ExplorePage() {
@@ -17,8 +17,10 @@ export default function ExplorePage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [channels, setChannels] = useState<Channel[]>([]);
   const [users, setUsers] = useState<RecommendedUser[]>([]);
+  const [trendingTags, setTrendingTags] = useState<TrendingTag[]>([]);
   const [isChannelsLoading, setIsChannelsLoading] = useState(true);
   const [isUsersLoading, setIsUsersLoading] = useState(true);
+  const [isTagsLoading, setIsTagsLoading] = useState(true);
   const [subscribingId, setSubscribingId] = useState<string | null>(null);
   const [followingId, setFollowingId] = useState<string | null>(null);
 
@@ -44,6 +46,17 @@ export default function ExplorePage() {
         console.error('사용자 로드 실패:', error);
       } finally {
         setIsUsersLoading(false);
+      }
+
+      // 트렌딩 태그 로드
+      setIsTagsLoading(true);
+      try {
+        const tagsData = await getTrendingTags(8);
+        setTrendingTags(tagsData);
+      } catch (error) {
+        console.error('트렌딩 태그 로드 실패:', error);
+      } finally {
+        setIsTagsLoading(false);
       }
     };
 
@@ -161,19 +174,31 @@ export default function ExplorePage() {
             트렌딩 태그
           </h2>
         </div>
-        <div className="flex flex-wrap gap-2">
-          {mockTrendingTags.map((tag) => (
-            <Link
-              key={tag.name}
-              href={`/search?q=${encodeURIComponent(tag.name)}`}
-              className="inline-flex items-center gap-1 px-3 py-1.5 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-full text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:border-[var(--border-strong)] transition-colors"
-            >
-              <span>#</span>
-              <span>{tag.name}</span>
-              <span className="text-[var(--text-tertiary)]">({tag.count})</span>
-            </Link>
-          ))}
-        </div>
+        {isTagsLoading ? (
+          <div className="flex flex-wrap gap-2">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <Skeleton key={i} className="w-20 h-8 rounded-full" />
+            ))}
+          </div>
+        ) : trendingTags.length === 0 ? (
+          <div className="text-sm text-[var(--text-tertiary)]">
+            트렌딩 태그가 없습니다.
+          </div>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            {trendingTags.map((tag) => (
+              <Link
+                key={tag.name}
+                href={`/search?q=${encodeURIComponent(tag.name)}`}
+                className="inline-flex items-center gap-1 px-3 py-1.5 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-full text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:border-[var(--border-strong)] transition-colors"
+              >
+                <span>#</span>
+                <span>{tag.name}</span>
+                <span className="text-[var(--text-tertiary)]">({tag.count})</span>
+              </Link>
+            ))}
+          </div>
+        )}
       </section>
 
       {/* Recommended Users Section */}

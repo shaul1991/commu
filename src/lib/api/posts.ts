@@ -4,7 +4,11 @@
  */
 
 import { apiClient } from './client';
+import { shouldUseMock } from '../env';
+import { getMockTrendingPosts, type MockTrendingPost } from '../mock/posts';
 import type { Post, PostSummary, PaginatedResponse, ApiResponse, CreatePostInput } from '@/types';
+
+export type TrendingPost = MockTrendingPost;
 
 /**
  * 게시글 목록 조회 (페이지네이션)
@@ -186,4 +190,34 @@ export async function deletePost(id: string): Promise<ApiResponse<null>> {
     success: true,
     data: null,
   };
+}
+
+/**
+ * 트렌딩 게시글 조회
+ * local 환경에서는 mock 데이터 사용, 그 외 환경에서는 실제 API 호출
+ * @param period 기간 필터 (today, week, month, all)
+ */
+export async function getTrendingPosts(
+  period: 'today' | 'week' | 'month' | 'all' = 'today'
+): Promise<TrendingPost[]> {
+  // Mock 모드 (local 환경)
+  if (shouldUseMock()) {
+    return getMockTrendingPosts(period);
+  }
+
+  // 실제 API 호출 (development, production 환경)
+  const params = new URLSearchParams({
+    period,
+  });
+
+  const response = await apiClient.get<TrendingPost[]>(
+    `/posts/trending?${params.toString()}`,
+    { skipAuth: true }
+  );
+
+  if (!response.success) {
+    throw new Error(response.error?.message || '트렌딩 게시글을 불러오는데 실패했습니다.');
+  }
+
+  return response.data || [];
 }
