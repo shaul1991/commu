@@ -91,7 +91,7 @@ export function ToastContainer() {
   return (
     <div
       className={cn(
-        'fixed bottom-4 right-4 z-[var(--z-toast)]',
+        'fixed top-4 right-4 z-[var(--z-toast)]',
         'flex flex-col gap-2',
         // 모바일에서는 전체 너비
         'left-4 sm:left-auto'
