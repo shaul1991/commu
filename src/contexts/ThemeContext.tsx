@@ -22,18 +22,19 @@ interface ThemeContextValue {
 
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
 
-const STORAGE_KEY = 'commu-theme';
+// 다크모드 복구 시 사용할 상수와 함수들 (현재 비활성화)
+const _STORAGE_KEY = 'commu-theme';
 
-function getSystemTheme(): ResolvedTheme {
+function _getSystemTheme(): ResolvedTheme {
   if (typeof window === 'undefined') return 'light';
   return window.matchMedia('(prefers-color-scheme: dark)').matches
     ? 'dark'
     : 'light';
 }
 
-function getInitialTheme(defaultTheme: Theme): Theme {
+function _getInitialTheme(defaultTheme: Theme): Theme {
   if (typeof window === 'undefined') return defaultTheme;
-  const savedTheme = localStorage.getItem(STORAGE_KEY) as Theme | null;
+  const savedTheme = localStorage.getItem(_STORAGE_KEY) as Theme | null;
   if (savedTheme && ['light', 'dark', 'system'].includes(savedTheme)) {
     return savedTheme;
   }
@@ -47,14 +48,12 @@ interface ThemeProviderProps {
 
 export function ThemeProvider({
   children,
-  defaultTheme = 'system',
+  defaultTheme: _defaultTheme = 'light', // 항상 light 모드 사용 (다크모드 복구 시 활성화)
 }: ThemeProviderProps) {
-  const [theme, setThemeState] = useState<Theme>(() =>
-    getInitialTheme(defaultTheme)
-  );
-  const [systemTheme, setSystemTheme] = useState<ResolvedTheme>(() =>
-    getSystemTheme()
-  );
+  // 항상 light 모드 고정 (다크모드 디자인 시스템은 유지)
+  const [theme] = useState<Theme>('light');
+  const [_systemTheme] = useState<ResolvedTheme>('light'); // 다크모드 복구 시 사용
+
   // Use useSyncExternalStore to track client-side mounting
   const mounted = useSyncExternalStore(
     () => () => {},
@@ -62,13 +61,10 @@ export function ThemeProvider({
     () => false
   );
 
-  // Derive resolved theme from current theme and system preference
+  // 항상 light 모드 반환
   const resolvedTheme = useMemo<ResolvedTheme>(() => {
-    if (theme === 'system') {
-      return systemTheme;
-    }
-    return theme;
-  }, [theme, systemTheme]);
+    return 'light';
+  }, []);
 
   // Apply theme to document
   useEffect(() => {
@@ -76,21 +72,21 @@ export function ThemeProvider({
     document.documentElement.setAttribute('data-theme', resolvedTheme);
   }, [resolvedTheme, mounted]);
 
-  // Listen for system theme changes
-  useEffect(() => {
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+  // 시스템 테마 변경 리스너 비활성화 (항상 light 모드)
+  // useEffect(() => {
+  //   const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+  //   const handler = (e: MediaQueryListEvent) => {
+  //     setSystemTheme(e.matches ? 'dark' : 'light');
+  //   };
+  //   mediaQuery.addEventListener('change', handler);
+  //   return () => mediaQuery.removeEventListener('change', handler);
+  // }, []);
 
-    const handler = (e: MediaQueryListEvent) => {
-      setSystemTheme(e.matches ? 'dark' : 'light');
-    };
-
-    mediaQuery.addEventListener('change', handler);
-    return () => mediaQuery.removeEventListener('change', handler);
-  }, []);
-
-  const setTheme = useCallback((newTheme: Theme) => {
-    setThemeState(newTheme);
-    localStorage.setItem(STORAGE_KEY, newTheme);
+  // setTheme은 호환성을 위해 유지하되, 실제로는 light 모드만 사용
+  const setTheme = useCallback((_newTheme: Theme) => {
+    // 항상 light 모드 유지 - 다크모드 UI가 복구되면 아래 코드 활성화
+    // setThemeState(newTheme);
+    // localStorage.setItem(STORAGE_KEY, newTheme);
   }, []);
 
   // Prevent flash of wrong theme

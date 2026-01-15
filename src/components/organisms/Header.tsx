@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Search, Bell, Menu, User, Settings, LogOut, X } from 'lucide-react';
-import { Avatar, Button, ThemeToggle } from '@/components/atoms';
+import { Avatar, Button } from '@/components/atoms';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks';
 
@@ -133,11 +133,6 @@ export function Header({ onMenuClick, notificationCount = 3 }: HeaderProps) {
           >
             <Search className="w-5 h-5" />
           </button>
-
-          {/* Theme Toggle */}
-          <div className="hidden sm:block">
-            <ThemeToggle />
-          </div>
 
           {isAuthenticated ? (
             <>
