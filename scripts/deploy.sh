@@ -205,8 +205,8 @@ main() {
     echo "NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}"
     echo "NEXT_PUBLIC_ENV: ${NEXT_PUBLIC_ENV}"
 
-    # Use BuildKit for better caching and containerd v2.x compatibility
-    DOCKER_BUILDKIT=1 docker build \
+    # Disable BuildKit to use legacy builder (Jenkins container doesn't have buildx)
+    DOCKER_BUILDKIT=0 docker build \
         --build-arg NEXT_PUBLIC_API_URL="${NEXT_PUBLIC_API_URL}" \
         --build-arg NEXT_PUBLIC_ENV="${NEXT_PUBLIC_ENV}" \
         -t "${DOCKER_IMAGE}:${IMAGE_TAG}" \
