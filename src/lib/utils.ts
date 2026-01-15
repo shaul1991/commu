@@ -33,17 +33,18 @@ export function formatRelativeTime(date: Date | string): string {
 /**
  * Format number with Korean units
  */
-export function formatNumber(num: number): string {
-  if (num >= 100000000) {
-    return `${(num / 100000000).toFixed(1)}억`;
+export function formatNumber(num: number | undefined | null): string {
+  const safeNum = num ?? 0;
+  if (safeNum >= 100000000) {
+    return `${(safeNum / 100000000).toFixed(1)}억`;
   }
-  if (num >= 10000) {
-    return `${(num / 10000).toFixed(1)}만`;
+  if (safeNum >= 10000) {
+    return `${(safeNum / 10000).toFixed(1)}만`;
   }
-  if (num >= 1000) {
-    return `${(num / 1000).toFixed(1)}천`;
+  if (safeNum >= 1000) {
+    return `${(safeNum / 1000).toFixed(1)}천`;
   }
-  return num.toLocaleString('ko-KR');
+  return safeNum.toLocaleString('ko-KR');
 }
 
 /**

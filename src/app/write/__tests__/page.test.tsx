@@ -404,11 +404,11 @@ describe('Write Page', () => {
       await user.click(submitButtons[0]);
 
       // mutate 호출 확인 - images와 referenceUrl도 포함
+      // TODO: 백엔드 채널 API 구현 후 channelSlug 테스트 복원
       expect(mockMutate).toHaveBeenCalledWith(
         {
           title: '테스트 제목',
           content: '테스트 내용',
-          channelSlug: 'tech',
           tags: [],
           images: undefined,
           referenceUrl: undefined,
@@ -446,11 +446,11 @@ describe('Write Page', () => {
       await user.click(submitButtons[0]);
 
       // mutate 호출 확인
+      // TODO: 백엔드 채널 API 구현 후 channelSlug 테스트 복원
       expect(mockMutate).toHaveBeenCalledWith(
         expect.objectContaining({
           title: '테스트 제목',
           content: '테스트 내용',
-          channelSlug: 'tech',
           tags: ['javascript', 'react'],
         }),
         expect.any(Object)

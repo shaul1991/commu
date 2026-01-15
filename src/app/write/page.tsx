@@ -79,7 +79,8 @@ export default function WritePage() {
       {
         title,
         content,
-        channelSlug: selectedChannel,
+        // TODO: 백엔드 채널 API 구현 후 channelSlug 활성화
+        // channelSlug: selectedChannel,
         tags,
         images: images.length > 0 ? images : undefined,
         referenceUrl: referenceUrl || undefined,

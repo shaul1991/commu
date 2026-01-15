@@ -47,7 +47,8 @@ export interface Post {
 export interface CreatePostInput {
   title: string;
   content: string;
-  channelSlug: string;
+  // TODO: 백엔드 채널 API 구현 후 channelSlug 필수로 변경
+  channelSlug?: string;
   tags: string[];
   images?: string[];
   referenceUrl?: string;
