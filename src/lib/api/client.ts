@@ -197,6 +197,14 @@ class ApiClient {
         credentials: 'include',
       });
 
+      // 204 No Content 응답은 본문이 없으므로 바로 성공 반환
+      if (response.status === 204) {
+        return {
+          success: true,
+          data: null as T,
+        };
+      }
+
       const data = await response.json();
 
       if (!response.ok) {
