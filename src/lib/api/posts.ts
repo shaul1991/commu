@@ -4,7 +4,7 @@
  */
 
 import { apiClient } from './client';
-import type { Post, PostSummary, PaginatedResponse, ApiResponse } from '@/types';
+import type { Post, PostSummary, PaginatedResponse, ApiResponse, CreatePostInput } from '@/types';
 
 /**
  * 게시글 목록 조회 (페이지네이션)
@@ -139,7 +139,7 @@ export async function togglePostBookmark(
  * 게시글 작성
  */
 export async function createPost(
-  data: Pick<Post, 'title' | 'content' | 'channelSlug' | 'tags'>
+  data: CreatePostInput
 ): Promise<ApiResponse<Post>> {
   const response = await apiClient.post<Post>('/posts', data);
 

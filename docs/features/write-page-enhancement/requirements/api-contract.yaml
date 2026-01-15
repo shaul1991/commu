@@ -1,0 +1,465 @@
+openapi: 3.0.3
+info:
+  title: Write Page Enhancement API
+  description: 새 글 작성 페이지 개선을 위한 API 명세
+  version: 1.0.0
+
+servers:
+  - url: /api
+    description: API Server
+
+tags:
+  - name: Upload
+    description: 파일 업로드 관련 API
+  - name: Tags
+    description: 태그 관련 API
+  - name: Posts
+    description: 게시글 관련 API (수정)
+
+paths:
+  /upload/images:
+    post:
+      tags:
+        - Upload
+      summary: 이미지 업로드
+      description: |
+        MinIO에 이미지를 업로드하고 URL을 반환합니다.
+        - 최대 10개 파일
+        - 단일 파일 최대 10MB
+        - 총 용량 최대 30MB
+        - 지원 형식: JPEG, PNG, GIF, WebP
+      operationId: uploadImages
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                files:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+                  maxItems: 10
+                  description: 업로드할 이미지 파일들
+              required:
+                - files
+      responses:
+        '200':
+          description: 업로드 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImageUploadResponse'
+        '400':
+          description: 잘못된 요청 (파일 크기 초과, 형식 오류 등)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              examples:
+                fileTooLarge:
+                  summary: 파일 크기 초과
+                  value:
+                    success: false
+                    error:
+                      code: FILE_TOO_LARGE
+                      message: 파일 크기가 10MB를 초과합니다.
+                invalidFormat:
+                  summary: 지원하지 않는 형식
+                  value:
+                    success: false
+                    error:
+                      code: INVALID_FILE_FORMAT
+                      message: 지원하지 않는 파일 형식입니다.
+                tooManyFiles:
+                  summary: 파일 개수 초과
+                  value:
+                    success: false
+                    error:
+                      code: TOO_MANY_FILES
+                      message: 최대 10개까지 업로드할 수 있습니다.
+        '401':
+          description: 인증 필요
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '429':
+          description: 요청 횟수 초과 (분당 10회)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /tags/suggest:
+    get:
+      tags:
+        - Tags
+      summary: 태그 추천
+      description: |
+        입력된 쿼리와 유사한 태그를 추천합니다.
+        - 최소 2글자 이상 입력 필요
+        - 사용 빈도순으로 정렬
+      operationId: suggestTags
+      parameters:
+        - name: q
+          in: query
+          required: true
+          description: 검색 쿼리 (최소 2글자)
+          schema:
+            type: string
+            minLength: 2
+            maxLength: 50
+        - name: limit
+          in: query
+          required: false
+          description: 반환할 최대 개수
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 10
+            default: 5
+      responses:
+        '200':
+          description: 추천 태그 목록
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TagSuggestResponse'
+        '400':
+          description: 잘못된 요청 (쿼리 길이 부족)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '429':
+          description: 요청 횟수 초과 (분당 30회)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /tags/popular:
+    get:
+      tags:
+        - Tags
+      summary: 인기 태그 조회
+      description: 가장 많이 사용된 태그 목록을 반환합니다.
+      operationId: getPopularTags
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          description: 반환할 최대 개수
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 20
+            default: 10
+      responses:
+        '200':
+          description: 인기 태그 목록
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TagSuggestResponse'
+
+  /posts:
+    post:
+      tags:
+        - Posts
+      summary: 게시글 작성 (수정)
+      description: |
+        새 게시글을 작성합니다.
+        **변경 사항:**
+        - `images` 필드 추가 (이미지 URL 배열)
+        - `referenceUrl` 필드 추가 (참고 링크)
+      operationId: createPost
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePostRequest'
+      responses:
+        '201':
+          description: 게시글 작성 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostResponse'
+        '400':
+          description: 잘못된 요청
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              examples:
+                invalidUrl:
+                  summary: 잘못된 URL 형식
+                  value:
+                    success: false
+                    error:
+                      code: INVALID_REFERENCE_URL
+                      message: 유효한 URL 형식이 아닙니다.
+        '401':
+          description: 인증 필요
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    UploadedImage:
+      type: object
+      required:
+        - id
+        - url
+        - filename
+        - size
+        - mimeType
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: 이미지 고유 ID
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        url:
+          type: string
+          format: uri
+          description: 이미지 접근 URL
+          example: "https://minio.example.com/images/user123/2026/01/image.jpg"
+        filename:
+          type: string
+          description: 원본 파일명
+          example: "my-photo.jpg"
+        size:
+          type: integer
+          description: 파일 크기 (bytes)
+          example: 102400
+        mimeType:
+          type: string
+          description: MIME 타입
+          example: "image/jpeg"
+
+    ImageUploadResponse:
+      type: object
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          required:
+            - images
+          properties:
+            images:
+              type: array
+              items:
+                $ref: '#/components/schemas/UploadedImage'
+
+    TagSuggestion:
+      type: object
+      required:
+        - name
+        - count
+      properties:
+        name:
+          type: string
+          description: 태그 이름
+          example: "react"
+        count:
+          type: integer
+          description: 사용 횟수
+          example: 380
+
+    TagSuggestResponse:
+      type: object
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          required:
+            - tags
+          properties:
+            tags:
+              type: array
+              items:
+                $ref: '#/components/schemas/TagSuggestion'
+
+    CreatePostRequest:
+      type: object
+      required:
+        - title
+        - content
+        - channelSlug
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: 게시글 제목
+          example: "React 18의 새로운 기능들"
+        content:
+          type: string
+          minLength: 1
+          maxLength: 50000
+          description: 게시글 본문 (마크다운)
+          example: "## 소개\n\nReact 18에서는..."
+        channelSlug:
+          type: string
+          description: 채널 슬러그
+          example: "tech"
+        tags:
+          type: array
+          items:
+            type: string
+            maxLength: 30
+          maxItems: 5
+          description: 태그 목록
+          example: ["react", "javascript", "frontend"]
+        images:
+          type: array
+          items:
+            type: string
+            format: uri
+          maxItems: 10
+          description: 본문에 포함된 이미지 URL 목록
+          example: ["https://minio.example.com/images/img1.jpg"]
+        referenceUrl:
+          type: string
+          format: uri
+          maxLength: 2048
+          description: 참고 링크 URL
+          example: "https://react.dev/blog/2022/03/29/react-v18"
+
+    PostResponse:
+      type: object
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          $ref: '#/components/schemas/Post'
+
+    Post:
+      type: object
+      required:
+        - id
+        - title
+        - content
+        - author
+        - channelSlug
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        content:
+          type: string
+        author:
+          $ref: '#/components/schemas/UserSummary'
+        channelId:
+          type: string
+        channelSlug:
+          type: string
+        channelName:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        images:
+          type: array
+          items:
+            type: string
+            format: uri
+          description: 이미지 URL 목록 (신규)
+        referenceUrl:
+          type: string
+          format: uri
+          description: 참고 링크 (신규)
+        viewCount:
+          type: integer
+        likeCount:
+          type: integer
+        commentCount:
+          type: integer
+        isLiked:
+          type: boolean
+        isBookmarked:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    UserSummary:
+      type: object
+      properties:
+        id:
+          type: string
+        displayName:
+          type: string
+        profileImage:
+          type: string
+          format: uri
+
+    ApiError:
+      type: object
+      required:
+        - success
+        - error
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: object
+          required:
+            - code
+            - message
+          properties:
+            code:
+              type: string
+              description: 에러 코드
+              example: "VALIDATION_ERROR"
+            message:
+              type: string
+              description: 에러 메시지
+              example: "잘못된 요청입니다."
+            details:
+              type: object
+              additionalProperties:
+                type: array
+                items:
+                  type: string
+              description: 필드별 상세 에러

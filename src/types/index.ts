@@ -32,6 +32,8 @@ export interface Post {
   channelSlug: string;
   channelName: string;
   tags: string[];
+  images?: string[];           // 이미지 URL 배열
+  referenceUrl?: string;       // 참고 링크
   viewCount: number;
   likeCount: number;
   commentCount: number;
@@ -39,6 +41,31 @@ export interface Post {
   isBookmarked: boolean;
   createdAt: Date;
   updatedAt: Date;
+}
+
+// 게시글 작성 입력 타입
+export interface CreatePostInput {
+  title: string;
+  content: string;
+  channelSlug: string;
+  tags: string[];
+  images?: string[];
+  referenceUrl?: string;
+}
+
+// 업로드된 이미지 정보
+export interface UploadedImage {
+  id: string;
+  url: string;
+  filename: string;
+  size: number;
+  mimeType: string;
+}
+
+// 태그 추천
+export interface TagSuggestion {
+  name: string;
+  count: number;
 }
 
 export interface PostSummary {

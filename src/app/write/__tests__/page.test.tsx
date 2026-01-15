@@ -1,6 +1,8 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { vi, MockedFunction } from 'vitest';
 import userEvent from '@testing-library/user-event';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import React from 'react';
 import WritePage from '../page';
 import { useRequireAuth } from '@/hooks';
 import { useCreatePost } from '@/hooks/usePost';
@@ -53,8 +55,100 @@ vi.mock('@/components/atoms', () => ({
   }) => <span className={className}>{children}</span>,
 }));
 
+// Mock molecules components
+vi.mock('@/components/molecules', () => ({
+  PreviewModal: ({ isOpen, onClose, title }: { isOpen: boolean; onClose: () => void; title: string }) =>
+    isOpen ? (
+      <div data-testid="preview-modal">
+        <span>{title}</span>
+        <button onClick={onClose}>닫기</button>
+      </div>
+    ) : null,
+  ReferenceUrlInput: ({ value, onChange }: { value: string; onChange: (url: string) => void }) => (
+    <div data-testid="reference-url-input">
+      <input
+        type="url"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="https://"
+      />
+    </div>
+  ),
+  TagAutocomplete: ({
+    selectedTags,
+    onTagsChange,
+    maxTags,
+  }: {
+    selectedTags: string[];
+    onTagsChange: (tags: string[]) => void;
+    maxTags: number;
+  }) => (
+    <div data-testid="tag-autocomplete">
+      <input
+        type="text"
+        placeholder="태그 입력 후 Enter"
+        disabled={selectedTags.length >= maxTags}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            const target = e.target as HTMLInputElement;
+            if (target.value.trim() && selectedTags.length < maxTags) {
+              onTagsChange([...selectedTags, target.value.trim()]);
+              target.value = '';
+            }
+          }
+        }}
+      />
+      <button
+        onClick={() => {
+          const input = document.querySelector('[placeholder="태그 입력 후 Enter"]') as HTMLInputElement;
+          if (input && input.value.trim() && selectedTags.length < maxTags) {
+            onTagsChange([...selectedTags, input.value.trim()]);
+            input.value = '';
+          }
+        }}
+      >
+        추가
+      </button>
+      <div>
+        {selectedTags.map((tag) => (
+          <span key={tag}>#{tag}</span>
+        ))}
+      </div>
+    </div>
+  ),
+  ImageUploadButton: ({
+    images,
+    onImagesChange,
+    maxImages,
+  }: {
+    images: string[];
+    onImagesChange: (images: string[]) => void;
+    maxImages: number;
+  }) => (
+    <div data-testid="image-upload-button">
+      <button disabled={images.length >= maxImages}>이미지 추가</button>
+      <span>{images.length} / {maxImages}</span>
+    </div>
+  ),
+}));
+
 const mockUseRequireAuth = useRequireAuth as MockedFunction<typeof useRequireAuth>;
 const mockUseCreatePost = useCreatePost as MockedFunction<typeof useCreatePost>;
+
+// QueryClient wrapper
+const createTestWrapper = () => {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false },
+    },
+  });
+
+  return function TestWrapper({ children }: { children: React.ReactNode }) {
+    return (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    );
+  };
+};
 
 describe('Write Page', () => {
   const mockMutate = vi.fn();
@@ -92,7 +186,7 @@ describe('Write Page', () => {
         isAuthenticated: false,
       });
 
-      render(<WritePage />);
+      render(<WritePage />, { wrapper: createTestWrapper() });
 
       expect(screen.getByTestId('main-layout')).toBeInTheDocument();
     });
@@ -104,7 +198,7 @@ describe('Write Page', () => {
         isAuthenticated: false,
       });
 
-      render(<WritePage />);
+      render(<WritePage />, { wrapper: createTestWrapper() });
 
       expect(screen.getByTestId('main-layout')).toBeInTheDocument();
     });
@@ -124,7 +218,7 @@ describe('Write Page', () => {
     });
 
     it('글 작성 폼이 표시됨', () => {
-      render(<WritePage />);
+      render(<WritePage />, { wrapper: createTestWrapper() });
 
       expect(screen.getByText('새 글 작성')).toBeInTheDocument();
       expect(screen.getByText('채널 선택 *')).toBeInTheDocument();
@@ -133,7 +227,7 @@ describe('Write Page', () => {
     });
 
     it('채널 목록이 표시됨', () => {
-      render(<WritePage />);
+      render(<WritePage />, { wrapper: createTestWrapper() });
 
       expect(screen.getByText('일반')).toBeInTheDocument();
       expect(screen.getByText('기술')).toBeInTheDocument();
@@ -143,7 +237,7 @@ describe('Write Page', () => {
     });
 
     it('필수 필드가 비어있으면 게시하기 버튼이 비활성화됨', () => {
-      render(<WritePage />);
+      render(<WritePage />, { wrapper: createTestWrapper() });
 
       const submitButtons = screen.getAllByText('게시하기');
       submitButtons.forEach((button) => {
@@ -153,7 +247,7 @@ describe('Write Page', () => {
 
     it('채널을 선택할 수 있음', async () => {
       const user = userEvent.setup();
-      render(<WritePage />);
+      render(<WritePage />, { wrapper: createTestWrapper() });
 
       const techChannel = screen.getByText('기술');
       await user.click(techChannel);
@@ -164,7 +258,7 @@ describe('Write Page', () => {
 
     it('제목을 입력할 수 있음', async () => {
       const user = userEvent.setup();
-      render(<WritePage />);
+      render(<WritePage />, { wrapper: createTestWrapper() });
 
       const titleInput = screen.getByPlaceholderText('제목을 입력하세요');
       await user.type(titleInput, '테스트 제목');
@@ -174,7 +268,7 @@ describe('Write Page', () => {
 
     it('내용을 입력할 수 있음', async () => {
       const user = userEvent.setup();
-      render(<WritePage />);
+      render(<WritePage />, { wrapper: createTestWrapper() });
 
       const contentInput = screen.getByPlaceholderText(
         '내용을 입력하세요. 마크다운 문법을 지원합니다.'
@@ -186,7 +280,7 @@ describe('Write Page', () => {
 
     it('제목 글자수 카운터가 표시됨', async () => {
       const user = userEvent.setup();
-      render(<WritePage />);
+      render(<WritePage />, { wrapper: createTestWrapper() });
 
       expect(screen.getByText('0/100')).toBeInTheDocument();
 
@@ -212,7 +306,7 @@ describe('Write Page', () => {
 
     it('태그를 추가할 수 있음', async () => {
       const user = userEvent.setup();
-      render(<WritePage />);
+      render(<WritePage />, { wrapper: createTestWrapper() });
 
       const tagInput = screen.getByPlaceholderText('태그 입력 후 Enter');
       await user.type(tagInput, 'javascript');
@@ -225,7 +319,7 @@ describe('Write Page', () => {
 
     it('Enter 키로 태그를 추가할 수 있음', async () => {
       const user = userEvent.setup();
-      render(<WritePage />);
+      render(<WritePage />, { wrapper: createTestWrapper() });
 
       const tagInput = screen.getByPlaceholderText('태그 입력 후 Enter');
       await user.type(tagInput, 'react{enter}');
@@ -235,7 +329,7 @@ describe('Write Page', () => {
 
     it('최대 5개까지 태그 추가 가능', async () => {
       const user = userEvent.setup();
-      render(<WritePage />);
+      render(<WritePage />, { wrapper: createTestWrapper() });
 
       const tagInput = screen.getByPlaceholderText('태그 입력 후 Enter');
 
@@ -268,7 +362,7 @@ describe('Write Page', () => {
 
     it('모든 필수 필드가 채워지면 게시하기 버튼이 활성화됨', async () => {
       const user = userEvent.setup();
-      render(<WritePage />);
+      render(<WritePage />, { wrapper: createTestWrapper() });
 
       // 채널 선택
       await user.click(screen.getByText('기술'));
@@ -290,7 +384,7 @@ describe('Write Page', () => {
 
     it('게시하기 버튼 클릭 시 createPost가 호출됨', async () => {
       const user = userEvent.setup();
-      render(<WritePage />);
+      render(<WritePage />, { wrapper: createTestWrapper() });
 
       // 채널 선택
       await user.click(screen.getByText('기술'));
@@ -309,13 +403,15 @@ describe('Write Page', () => {
       const submitButtons = screen.getAllByText('게시하기');
       await user.click(submitButtons[0]);
 
-      // mutate 호출 확인
+      // mutate 호출 확인 - images와 referenceUrl도 포함
       expect(mockMutate).toHaveBeenCalledWith(
         {
           title: '테스트 제목',
           content: '테스트 내용',
           channelSlug: 'tech',
           tags: [],
+          images: undefined,
+          referenceUrl: undefined,
         },
         expect.objectContaining({
           onSuccess: expect.any(Function),
@@ -325,7 +421,7 @@ describe('Write Page', () => {
 
     it('태그와 함께 게시글 작성', async () => {
       const user = userEvent.setup();
-      render(<WritePage />);
+      render(<WritePage />, { wrapper: createTestWrapper() });
 
       // 채널 선택
       await user.click(screen.getByText('기술'));
@@ -351,12 +447,12 @@ describe('Write Page', () => {
 
       // mutate 호출 확인
       expect(mockMutate).toHaveBeenCalledWith(
-        {
+        expect.objectContaining({
           title: '테스트 제목',
           content: '테스트 내용',
           channelSlug: 'tech',
           tags: ['javascript', 'react'],
-        },
+        }),
         expect.any(Object)
       );
     });
@@ -371,7 +467,7 @@ describe('Write Page', () => {
         }
       });
 
-      render(<WritePage />);
+      render(<WritePage />, { wrapper: createTestWrapper() });
 
       // 채널 선택
       await user.click(screen.getByText('기술'));
@@ -411,7 +507,7 @@ describe('Write Page', () => {
         mutateAsync: vi.fn(),
       });
 
-      render(<WritePage />);
+      render(<WritePage />, { wrapper: createTestWrapper() });
 
       // '게시 중...' 텍스트 표시 확인
       expect(screen.getAllByText('게시 중...').length).toBeGreaterThan(0);

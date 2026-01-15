@@ -1,10 +1,16 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { MainLayout } from '@/components/templates';
-import { Button, Badge } from '@/components/atoms';
-import { PenLine, ImageIcon, Link2, Hash, X, Eye, Send, Loader2 } from 'lucide-react';
+import { Button } from '@/components/atoms';
+import {
+  PreviewModal,
+  ReferenceUrlInput,
+  TagAutocomplete,
+  ImageUploadButton,
+} from '@/components/molecules';
+import { PenLine, Eye, Send, Loader2 } from 'lucide-react';
 import { useRequireAuth } from '@/hooks';
 import { useCreatePost } from '@/hooks/usePost';
 
@@ -20,12 +26,20 @@ export default function WritePage() {
   const router = useRouter();
   const { isLoading, isAuthenticated } = useRequireAuth();
   const createPostMutation = useCreatePost();
+
+  // Form State
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [selectedChannel, setSelectedChannel] = useState('');
   const [tags, setTags] = useState<string[]>([]);
-  const [tagInput, setTagInput] = useState('');
+  const [images, setImages] = useState<string[]>([]);
+  const [referenceUrl, setReferenceUrl] = useState('');
 
+  // UI State
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [isDragOver, setIsDragOver] = useState(false);
+
+  // 인증 로딩 중
   if (isLoading || !isAuthenticated) {
     return (
       <MainLayout>
@@ -36,24 +50,11 @@ export default function WritePage() {
     );
   }
 
-  const addTag = () => {
-    if (tagInput.trim() && !tags.includes(tagInput.trim()) && tags.length < 5) {
-      setTags([...tags, tagInput.trim()]);
-      setTagInput('');
-    }
-  };
+  // 채널 이름 가져오기
+  const selectedChannelName =
+    channels.find((c) => c.slug === selectedChannel)?.name || '';
 
-  const removeTag = (tagToRemove: string) => {
-    setTags(tags.filter(tag => tag !== tagToRemove));
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      addTag();
-    }
-  };
-
+  // 폼 제출 핸들러
   const handleSubmit = async () => {
     if (!title || !content || !selectedChannel) return;
 
@@ -63,6 +64,8 @@ export default function WritePage() {
         content,
         channelSlug: selectedChannel,
         tags,
+        images: images.length > 0 ? images : undefined,
+        referenceUrl: referenceUrl || undefined,
       },
       {
         onSuccess: (response) => {
@@ -76,6 +79,25 @@ export default function WritePage() {
     );
   };
 
+  // 드래그 앤 드롭 핸들러 (본문 영역)
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    // 파일은 ImageUploadButton에서 처리
+  }, []);
+
+  const isFormValid = title && content && selectedChannel;
+
   return (
     <MainLayout>
       {/* Page Header */}
@@ -83,17 +105,24 @@ export default function WritePage() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <PenLine className="w-6 h-6 text-[var(--color-primary-500)]" />
-            <h1 className="text-2xl font-bold text-[var(--text-primary)]">새 글 작성</h1>
+            <h1 className="text-2xl font-bold text-[var(--text-primary)]">
+              새 글 작성
+            </h1>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="secondary" size="sm">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setIsPreviewOpen(true)}
+              disabled={!title && !content}
+            >
               <Eye className="w-4 h-4 mr-1" />
               미리보기
             </Button>
             <Button
               variant="primary"
               size="sm"
-              disabled={!title || !content || !selectedChannel || createPostMutation.isPending}
+              disabled={!isFormValid || createPostMutation.isPending}
               onClick={handleSubmit}
             >
               {createPostMutation.isPending ? (
@@ -149,21 +178,21 @@ export default function WritePage() {
           </p>
         </div>
 
-        {/* Content Textarea */}
+        {/* Content Textarea with Drag & Drop */}
         <div>
           <label className="block text-sm font-medium text-[var(--text-primary)] mb-2">
             내용 *
           </label>
-          <div className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-lg)] overflow-hidden focus-within:ring-2 focus-within:ring-[var(--color-primary-500)] focus-within:border-transparent">
-            {/* Toolbar */}
-            <div className="flex items-center gap-1 p-2 border-b border-[var(--border-default)]">
-              <button className="p-2 hover:bg-[var(--bg-hover)] rounded-[var(--radius-md)]" title="이미지 추가">
-                <ImageIcon className="w-4 h-4 text-[var(--text-secondary)]" />
-              </button>
-              <button className="p-2 hover:bg-[var(--bg-hover)] rounded-[var(--radius-md)]" title="링크 추가">
-                <Link2 className="w-4 h-4 text-[var(--text-secondary)]" />
-              </button>
-            </div>
+          <div
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            className={`bg-[var(--bg-surface)] border rounded-[var(--radius-lg)] overflow-hidden transition-colors ${
+              isDragOver
+                ? 'border-[var(--color-primary-500)] ring-2 ring-[var(--color-primary-500)]'
+                : 'border-[var(--border-default)] focus-within:ring-2 focus-within:ring-[var(--color-primary-500)] focus-within:border-transparent'
+            }`}
+          >
             {/* Textarea */}
             <textarea
               value={content}
@@ -178,51 +207,50 @@ export default function WritePage() {
           </p>
         </div>
 
-        {/* Tags Input */}
-        <div>
-          <label className="block text-sm font-medium text-[var(--text-primary)] mb-2">
-            <Hash className="w-4 h-4 inline mr-1" />
-            태그 (최대 5개)
-          </label>
-          <div className="flex flex-wrap gap-2 mb-2">
-            {tags.map((tag) => (
-              <Badge key={tag} variant="secondary" className="flex items-center gap-1">
-                #{tag}
-                <button onClick={() => removeTag(tag)} className="ml-1 hover:text-[var(--color-error-500)]">
-                  <X className="w-3 h-3" />
-                </button>
-              </Badge>
-            ))}
-          </div>
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={tagInput}
-              onChange={(e) => setTagInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="태그 입력 후 Enter"
-              disabled={tags.length >= 5}
-              className="flex-1 px-4 py-2 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-md)] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-500)] focus:border-transparent disabled:opacity-50"
-            />
-            <Button variant="secondary" onClick={addTag} disabled={tags.length >= 5 || !tagInput.trim()}>
-              추가
-            </Button>
-          </div>
-        </div>
+        {/* Image Upload */}
+        <ImageUploadButton
+          images={images}
+          onImagesChange={setImages}
+          maxImages={10}
+        />
+
+        {/* Reference URL */}
+        <ReferenceUrlInput value={referenceUrl} onChange={setReferenceUrl} />
+
+        {/* Tags */}
+        <TagAutocomplete
+          selectedTags={tags}
+          onTagsChange={setTags}
+          maxTags={5}
+        />
 
         {/* Submit Buttons (Mobile) */}
         <div className="flex gap-3 pt-4 border-t border-[var(--border-default)] md:hidden">
-          <Button variant="secondary" className="flex-1">임시저장</Button>
+          <Button variant="secondary" className="flex-1">
+            임시저장
+          </Button>
           <Button
             variant="primary"
             className="flex-1"
-            disabled={!title || !content || !selectedChannel || createPostMutation.isPending}
+            disabled={!isFormValid || createPostMutation.isPending}
             onClick={handleSubmit}
           >
             {createPostMutation.isPending ? '게시 중...' : '게시하기'}
           </Button>
         </div>
       </div>
+
+      {/* Preview Modal */}
+      <PreviewModal
+        isOpen={isPreviewOpen}
+        onClose={() => setIsPreviewOpen(false)}
+        title={title || '제목 없음'}
+        content={content || '내용 없음'}
+        channelName={selectedChannelName || '채널 미선택'}
+        tags={tags}
+        images={images}
+        referenceUrl={referenceUrl}
+      />
     </MainLayout>
   );
 }
