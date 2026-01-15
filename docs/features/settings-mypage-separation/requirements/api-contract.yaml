@@ -1,0 +1,420 @@
+openapi: 3.0.3
+info:
+  title: Commu - Settings/MyPage API
+  description: /settings와 /mypage 기능을 위한 API 스펙
+  version: 1.0.0
+
+servers:
+  - url: /api
+    description: API Server
+
+paths:
+  # ============================================
+  # /mypage 관련 API (인증 필수)
+  # ============================================
+
+  /users/me:
+    get:
+      summary: 현재 사용자 프로필 조회
+      operationId: getMyProfile
+      tags:
+        - MyPage
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    patch:
+      summary: 프로필 수정
+      operationId: updateMyProfile
+      tags:
+        - MyPage
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProfileDto'
+      responses:
+        '200':
+          description: 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /users/me/profile-image:
+    patch:
+      summary: 프로필 이미지 변경
+      operationId: updateProfileImage
+      tags:
+        - MyPage
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                image:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: 성공
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  profileImage:
+                    type: string
+                    format: uri
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /users/me/posts:
+    get:
+      summary: 내 게시글 목록
+      operationId: getMyPosts
+      tags:
+        - MyPage
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /users/me/comments:
+    get:
+      summary: 내 댓글 목록
+      operationId: getMyComments
+      tags:
+        - MyPage
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommentListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /users/me/likes:
+    get:
+      summary: 좋아요한 게시글 목록
+      operationId: getMyLikes
+      tags:
+        - MyPage
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /users/me/bookmarks:
+    get:
+      summary: 북마크한 게시글 목록
+      operationId: getMyBookmarks
+      tags:
+        - MyPage
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # ============================================
+  # 인증 관련 API
+  # ============================================
+
+  /auth/change-password:
+    post:
+      summary: 비밀번호 변경
+      operationId: changePassword
+      tags:
+        - Auth
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePasswordDto'
+      responses:
+        '200':
+          description: 성공
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: 비밀번호가 변경되었습니다
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/logout:
+    post:
+      summary: 로그아웃
+      operationId: logout
+      tags:
+        - Auth
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: 성공
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: 로그아웃되었습니다
+
+components:
+  schemas:
+    UserProfile:
+      type: object
+      required:
+        - id
+        - email
+        - isEmailVerified
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        firstName:
+          type: string
+          nullable: true
+        lastName:
+          type: string
+          nullable: true
+        displayName:
+          type: string
+          nullable: true
+        profileImage:
+          type: string
+          format: uri
+          nullable: true
+        isEmailVerified:
+          type: boolean
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    UpdateProfileDto:
+      type: object
+      properties:
+        firstName:
+          type: string
+          maxLength: 100
+        lastName:
+          type: string
+          maxLength: 100
+        displayName:
+          type: string
+          maxLength: 50
+
+    ChangePasswordDto:
+      type: object
+      required:
+        - currentPassword
+        - newPassword
+      properties:
+        currentPassword:
+          type: string
+          minLength: 8
+        newPassword:
+          type: string
+          minLength: 8
+          description: 최소 8자, 영문/숫자/특수문자 포함
+
+    PostListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/PostSummary'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+
+    PostSummary:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        content:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        likeCount:
+          type: integer
+        commentCount:
+          type: integer
+
+    CommentListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/CommentSummary'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+
+    CommentSummary:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        content:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        postId:
+          type: string
+          format: uuid
+        postTitle:
+          type: string
+
+    Pagination:
+      type: object
+      properties:
+        page:
+          type: integer
+        limit:
+          type: integer
+        total:
+          type: integer
+        totalPages:
+          type: integer
+
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        details:
+          type: array
+          items:
+            type: object
+
+  parameters:
+    Page:
+      name: page
+      in: query
+      schema:
+        type: integer
+        default: 1
+        minimum: 1
+
+    Limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        default: 20
+        minimum: 1
+        maximum: 100
+
+  responses:
+    Unauthorized:
+      description: 인증 실패
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: UNAUTHORIZED
+            message: 인증이 필요합니다
+
+    ValidationError:
+      description: 유효성 검증 실패
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: VALIDATION_ERROR
+            message: 입력값이 올바르지 않습니다
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
