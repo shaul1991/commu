@@ -1,17 +1,12 @@
 /**
  * Settings 페이지 TDD 테스트
  * 변경: 비로그인 사용자도 접근 가능하도록 수정됨
+ * 변경: 테마 선택 UI 숨김 처리 (다크모드 복구 시 테스트 활성화)
  */
 
-import { render, screen, fireEvent } from '@testing-library/react';
-import { vi, MockedFunction } from 'vitest';
+import { render, screen } from '@testing-library/react';
+import { vi } from 'vitest';
 import SettingsPage from '../page';
-import { useTheme } from '@/contexts/ThemeContext';
-
-// Mock hooks
-vi.mock('@/contexts/ThemeContext', () => ({
-  useTheme: vi.fn(),
-}));
 
 // Mock Next.js components
 vi.mock('next/link', () => ({
@@ -26,17 +21,9 @@ vi.mock('@/components/templates', () => ({
   ),
 }));
 
-const mockUseTheme = useTheme as MockedFunction<typeof useTheme>;
-const mockSetTheme = vi.fn();
-
 describe('Settings Page (비로그인 접근 가능)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockUseTheme.mockReturnValue({
-      theme: 'system',
-      resolvedTheme: 'light',
-      setTheme: mockSetTheme,
-    });
   });
 
   describe('접근 제어', () => {
@@ -46,45 +33,14 @@ describe('Settings Page (비로그인 접근 가능)', () => {
     });
   });
 
-  describe('테마 설정', () => {
-    it('테마 섹션이 표시되어야 함', () => {
-      render(<SettingsPage />);
-      expect(screen.getByText('테마')).toBeInTheDocument();
-    });
-
-    it('라이트 모드 버튼이 있어야 함', () => {
-      render(<SettingsPage />);
-      expect(screen.getByLabelText('라이트 모드')).toBeInTheDocument();
-    });
-
-    it('다크 모드 버튼이 있어야 함', () => {
-      render(<SettingsPage />);
-      expect(screen.getByLabelText('다크 모드')).toBeInTheDocument();
-    });
-
-    it('시스템 설정 버튼이 있어야 함', () => {
-      render(<SettingsPage />);
-      expect(screen.getByLabelText('시스템 설정 따르기')).toBeInTheDocument();
-    });
-
-    it('라이트 모드 클릭 시 setTheme("light") 호출', () => {
-      render(<SettingsPage />);
-      fireEvent.click(screen.getByLabelText('라이트 모드'));
-      expect(mockSetTheme).toHaveBeenCalledWith('light');
-    });
-
-    it('다크 모드 클릭 시 setTheme("dark") 호출', () => {
-      render(<SettingsPage />);
-      fireEvent.click(screen.getByLabelText('다크 모드'));
-      expect(mockSetTheme).toHaveBeenCalledWith('dark');
-    });
-
-    it('시스템 설정 클릭 시 setTheme("system") 호출', () => {
-      render(<SettingsPage />);
-      fireEvent.click(screen.getByLabelText('시스템 설정 따르기'));
-      expect(mockSetTheme).toHaveBeenCalledWith('system');
-    });
-  });
+  // 테마 설정 테스트 - 다크모드 UI 복구 시 활성화
+  // describe('테마 설정', () => {
+  //   it('테마 섹션이 표시되어야 함', () => {
+  //     render(<SettingsPage />);
+  //     expect(screen.getByText('테마')).toBeInTheDocument();
+  //   });
+  //   ... (테마 관련 테스트들)
+  // });
 
   describe('앱 정보', () => {
     it('앱 버전이 표시되어야 함', () => {

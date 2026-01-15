@@ -1,18 +1,9 @@
 'use client';
 
 import { MainLayout } from '@/components/templates';
-import { Settings, Palette, Moon, Sun, Monitor, Info, ExternalLink } from 'lucide-react';
-import { useTheme } from '@/contexts/ThemeContext';
-
-type ThemeMode = 'light' | 'dark' | 'system';
+import { Settings, Info, ExternalLink } from 'lucide-react';
 
 export default function SettingsPage() {
-  const { theme, setTheme } = useTheme();
-
-  const handleThemeChange = (newTheme: ThemeMode) => {
-    setTheme(newTheme);
-  };
-
   return (
     <MainLayout>
       {/* Page Header */}
@@ -26,56 +17,15 @@ export default function SettingsPage() {
         </p>
       </div>
 
-      {/* Appearance Section */}
+      {/* 테마 섹션 - 다크모드 복구 시 활성화
       <section className="mb-8">
         <h2 className="text-sm font-semibold text-[var(--text-tertiary)] uppercase tracking-wider mb-3 flex items-center gap-2">
           <Palette className="w-4 h-4" />
           테마
         </h2>
-        <div className="bg-[var(--bg-surface)] rounded-[var(--radius-lg)] border border-[var(--border-default)] p-4">
-          <p className="text-sm text-[var(--text-secondary)] mb-4">
-            앱의 외관을 설정합니다. 시스템 설정에 따라 자동으로 변경되도록 할 수도 있습니다.
-          </p>
-          <div className="grid grid-cols-3 gap-3">
-            <button
-              onClick={() => handleThemeChange('light')}
-              aria-label="라이트 모드"
-              className={`p-4 rounded-[var(--radius-md)] border-2 transition-colors flex flex-col items-center gap-2 ${
-                theme === 'light'
-                  ? 'border-[var(--color-primary-500)] bg-[var(--color-primary-50)]'
-                  : 'border-[var(--border-default)] hover:border-[var(--border-strong)]'
-              }`}
-            >
-              <Sun className="w-6 h-6" />
-              <span className="text-sm font-medium">라이트</span>
-            </button>
-            <button
-              onClick={() => handleThemeChange('dark')}
-              aria-label="다크 모드"
-              className={`p-4 rounded-[var(--radius-md)] border-2 transition-colors flex flex-col items-center gap-2 ${
-                theme === 'dark'
-                  ? 'border-[var(--color-primary-500)] bg-[var(--color-primary-50)]'
-                  : 'border-[var(--border-default)] hover:border-[var(--border-strong)]'
-              }`}
-            >
-              <Moon className="w-6 h-6" />
-              <span className="text-sm font-medium">다크</span>
-            </button>
-            <button
-              onClick={() => handleThemeChange('system')}
-              aria-label="시스템 설정 따르기"
-              className={`p-4 rounded-[var(--radius-md)] border-2 transition-colors flex flex-col items-center gap-2 ${
-                theme === 'system'
-                  ? 'border-[var(--color-primary-500)] bg-[var(--color-primary-50)]'
-                  : 'border-[var(--border-default)] hover:border-[var(--border-strong)]'
-              }`}
-            >
-              <Monitor className="w-6 h-6" />
-              <span className="text-sm font-medium">시스템</span>
-            </button>
-          </div>
-        </div>
+        ...
       </section>
+      */}
 
       {/* App Info Section */}
       <section>
