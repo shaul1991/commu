@@ -31,7 +31,7 @@ export interface Post {
   channelId: string;
   channelSlug: string;
   channelName: string;
-  tags: string[];
+  tags: Tag[] | string[];
   images?: string[];           // 이미지 URL 배열
   referenceUrl?: string;       // 참고 링크
   viewCount: number;
@@ -61,6 +61,15 @@ export interface UploadedImage {
   filename: string;
   size: number;
   mimeType: string;
+}
+
+// 태그 (API 응답)
+export interface Tag {
+  id: string;
+  name: string;
+  useCount: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
 // 태그 추천

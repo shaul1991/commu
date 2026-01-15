@@ -39,7 +39,11 @@ function EditPostForm({ post, postId }: { post: Post; postId: string }) {
   const [title, setTitle] = useState(post.title);
   const [content, setContent] = useState(post.content);
   const [selectedChannel] = useState(post.channelSlug || '');
-  const [tags, setTags] = useState<string[]>(post.tags || []);
+  // tags가 객체 배열일 수 있으므로 문자열 배열로 변환
+  const initialTags = (post.tags || []).map((tag) =>
+    typeof tag === 'string' ? tag : tag.name
+  );
+  const [tags, setTags] = useState<string[]>(initialTags);
   const [images, setImages] = useState<string[]>(post.images || []);
   const [referenceUrl, setReferenceUrl] = useState(post.referenceUrl || '');
 
@@ -78,7 +82,7 @@ function EditPostForm({ post, postId }: { post: Post; postId: string }) {
   const hasChanges =
     title !== post.title ||
     content !== post.content ||
-    JSON.stringify(tags) !== JSON.stringify(post.tags || []);
+    JSON.stringify(tags) !== JSON.stringify(initialTags);
 
   return (
     <>

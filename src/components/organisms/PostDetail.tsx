@@ -207,22 +207,25 @@ export function PostDetail({
         {/* Tags */}
         {post.tags && post.tags.length > 0 && (
           <div className="flex flex-wrap gap-2 mb-6">
-            {post.tags.map((tag) => (
-              <Link
-                key={tag}
-                href={`/tag/${tag}`}
-                className={cn(
-                  'px-2 py-1',
-                  'bg-[var(--bg-page)]',
-                  'text-sm text-[var(--text-secondary)]',
-                  'rounded-[var(--radius-sm)]',
-                  'hover:bg-[var(--bg-hover)]',
-                  'transition-colors duration-[var(--duration-fast)]'
-                )}
-              >
-                #{tag}
-              </Link>
-            ))}
+            {post.tags.map((tag) => {
+              const tagName = typeof tag === 'string' ? tag : tag.name;
+              return (
+                <Link
+                  key={tagName}
+                  href={`/tag/${tagName}`}
+                  className={cn(
+                    'px-2 py-1',
+                    'bg-[var(--bg-page)]',
+                    'text-sm text-[var(--text-secondary)]',
+                    'rounded-[var(--radius-sm)]',
+                    'hover:bg-[var(--bg-hover)]',
+                    'transition-colors duration-[var(--duration-fast)]'
+                  )}
+                >
+                  #{tagName}
+                </Link>
+              );
+            })}
           </div>
         )}
 
