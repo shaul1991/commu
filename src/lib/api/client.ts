@@ -194,6 +194,18 @@ class ApiClient {
     });
   }
 
+  async put<T>(
+    endpoint: string,
+    body?: unknown,
+    config?: RequestConfig
+  ): Promise<ApiResponse<T>> {
+    return this.request<T>(endpoint, {
+      ...config,
+      method: 'PUT',
+      body: body ? JSON.stringify(body) : undefined,
+    });
+  }
+
   async patch<T>(
     endpoint: string,
     body?: unknown,

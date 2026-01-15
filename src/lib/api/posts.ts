@@ -164,7 +164,7 @@ export async function updatePost(
   id: string,
   data: Partial<Pick<Post, 'title' | 'content' | 'tags'>>
 ): Promise<ApiResponse<Post>> {
-  const response = await apiClient.patch<Post>(`/posts/${id}`, data);
+  const response = await apiClient.put<Post>(`/posts/${id}`, data);
 
   if (!response.success) {
     throw new Error(response.error?.message || '게시글 수정에 실패했습니다.');
