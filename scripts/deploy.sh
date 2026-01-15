@@ -191,12 +191,23 @@ main() {
     # Step 1: Build new image with tag
     echo -e "${YELLOW}Step 1: Building new image...${NC}"
 
-    # Load NEXT_PUBLIC_API_URL from env file for build-time injection
+    # Load NEXT_PUBLIC_* variables from env file for build-time injection
     NEXT_PUBLIC_API_URL=$(grep "^NEXT_PUBLIC_API_URL=" "${ENV_FILE}" | cut -d'=' -f2-)
+    NEXT_PUBLIC_ENV=$(grep "^NEXT_PUBLIC_ENV=" "${ENV_FILE}" | cut -d'=' -f2-)
+    # Default to 'development' for dev env, 'production' for prod env if not set
+    if [ -z "${NEXT_PUBLIC_ENV}" ]; then
+        if [ "${ENV}" == "prod" ]; then
+            NEXT_PUBLIC_ENV="production"
+        else
+            NEXT_PUBLIC_ENV="development"
+        fi
+    fi
     echo "NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}"
+    echo "NEXT_PUBLIC_ENV: ${NEXT_PUBLIC_ENV}"
 
     docker build \
         --build-arg NEXT_PUBLIC_API_URL="${NEXT_PUBLIC_API_URL}" \
+        --build-arg NEXT_PUBLIC_ENV="${NEXT_PUBLIC_ENV}" \
         -t "${DOCKER_IMAGE}:${IMAGE_TAG}" \
         -t "${DOCKER_IMAGE}:latest" .
     echo -e "${GREEN}Image built: ${DOCKER_IMAGE}:${IMAGE_TAG}${NC}"
