@@ -205,16 +205,12 @@ main() {
     echo "NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}"
     echo "NEXT_PUBLIC_ENV: ${NEXT_PUBLIC_ENV}"
 
-    # Use buildx for better compatibility with containerd v2.x
-    # --load: Load the built image into docker images
-    # --provenance=false: Disable provenance attestation (prevents multi-platform manifest issues)
-    docker buildx build \
+    # Use BuildKit for better caching and containerd v2.x compatibility
+    DOCKER_BUILDKIT=1 docker build \
         --build-arg NEXT_PUBLIC_API_URL="${NEXT_PUBLIC_API_URL}" \
         --build-arg NEXT_PUBLIC_ENV="${NEXT_PUBLIC_ENV}" \
         -t "${DOCKER_IMAGE}:${IMAGE_TAG}" \
         -t "${DOCKER_IMAGE}:latest" \
-        --load \
-        --provenance=false \
         .
     echo -e "${GREEN}Image built: ${DOCKER_IMAGE}:${IMAGE_TAG}${NC}"
     echo ""
