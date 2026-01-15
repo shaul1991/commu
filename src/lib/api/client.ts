@@ -3,6 +3,7 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 interface RequestConfig extends RequestInit {
   skipAuth?: boolean;
   token?: string; // 직접 토큰 전달 (로그인 직후 getMe 호출 등)
+  skipRefresh?: boolean; // 토큰 갱신 시도 건너뛰기 (무한 루프 방지)
 }
 
 interface ApiError {
@@ -83,6 +84,8 @@ function getErrorMessage(statusCode: number, message: string, path?: string): st
 
 class ApiClient {
   private baseUrl: string;
+  private isRefreshing = false;
+  private refreshPromise: Promise<boolean> | null = null;
 
   constructor(baseUrl: string) {
     this.baseUrl = baseUrl;
@@ -102,11 +105,76 @@ class ApiClient {
     return null;
   }
 
+  private setAccessToken(token: string): void {
+    if (typeof window === 'undefined') return;
+    try {
+      const authStore = localStorage.getItem('commu-auth');
+      if (authStore) {
+        const parsed = JSON.parse(authStore);
+        parsed.state.accessToken = token;
+        localStorage.setItem('commu-auth', JSON.stringify(parsed));
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  private clearAuthState(): void {
+    if (typeof window === 'undefined') return;
+    try {
+      const authStore = localStorage.getItem('commu-auth');
+      if (authStore) {
+        const parsed = JSON.parse(authStore);
+        parsed.state.accessToken = null;
+        parsed.state.user = null;
+        parsed.state.isAuthenticated = false;
+        localStorage.setItem('commu-auth', JSON.stringify(parsed));
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  private async refreshToken(): Promise<boolean> {
+    // 이미 갱신 중이면 기존 Promise 반환 (중복 요청 방지)
+    if (this.isRefreshing && this.refreshPromise) {
+      return this.refreshPromise;
+    }
+
+    this.isRefreshing = true;
+    this.refreshPromise = (async () => {
+      try {
+        const response = await fetch(`${this.baseUrl}/auth/refresh`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include', // httpOnly 쿠키 전송
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const newAccessToken = data.data?.accessToken || data.accessToken;
+          if (newAccessToken) {
+            this.setAccessToken(newAccessToken);
+            return true;
+          }
+        }
+        return false;
+      } catch {
+        return false;
+      } finally {
+        this.isRefreshing = false;
+        this.refreshPromise = null;
+      }
+    })();
+
+    return this.refreshPromise;
+  }
+
   private async request<T>(
     endpoint: string,
     config: RequestConfig = {}
   ): Promise<ApiResponse<T>> {
-    const { skipAuth = false, token: providedToken, ...fetchConfig } = config;
+    const { skipAuth = false, token: providedToken, skipRefresh = false, ...fetchConfig } = config;
     const url = `${this.baseUrl}${endpoint}`;
 
     const headers: HeadersInit = {
@@ -135,6 +203,18 @@ class ApiClient {
         // NestJS 에러 응답 형식: { statusCode, message, error, errors?, path? }
         const statusCode = data.statusCode || response.status;
         const rawMessage = data.message || data.error || '';
+
+        // 401 에러 시 토큰 갱신 시도
+        if (statusCode === 401 && !skipAuth && !skipRefresh && !endpoint.includes('/auth/refresh')) {
+          const refreshed = await this.refreshToken();
+          if (refreshed) {
+            // 토큰 갱신 성공 시 원래 요청 재시도
+            return this.request<T>(endpoint, { ...config, skipRefresh: true });
+          } else {
+            // 토큰 갱신 실패 시 로그아웃 처리
+            this.clearAuthState();
+          }
+        }
 
         // 상세 에러 메시지 추출 (validation errors 등)
         let detailMessage = rawMessage;
