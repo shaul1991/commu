@@ -47,3 +47,19 @@ export {
   getMyBookmarks,
   getUserProfile,
 } from './users';
+
+// MyActivity (마이페이지 내 활동)
+export {
+  fetchMyPosts,
+  fetchMyPostsInfinite,
+  fetchMyComments,
+  fetchMyCommentsInfinite,
+  fetchLikedPosts,
+  fetchLikedPostsInfinite,
+  fetchBookmarkedPosts,
+  fetchBookmarkedPostsInfinite,
+  type FetchMyPostsParams,
+  type FetchMyCommentsParams,
+  type FetchLikedPostsParams,
+  type FetchBookmarkedPostsParams,
+} from './myActivity';

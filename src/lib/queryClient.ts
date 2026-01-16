@@ -76,4 +76,41 @@ export const queryKeys = {
     unreadCount: () =>
       [...queryKeys.notifications.all, 'unreadCount'] as const,
   },
+
+  // MyActivity (마이페이지 내 활동)
+  myActivity: {
+    all: ['myActivity'] as const,
+    // 내 게시글
+    posts: {
+      all: () => [...queryKeys.myActivity.all, 'posts'] as const,
+      list: (filters?: Record<string, unknown>) =>
+        [...queryKeys.myActivity.posts.all(), 'list', filters] as const,
+      infinite: (filters?: Record<string, unknown>) =>
+        [...queryKeys.myActivity.posts.all(), 'infinite', filters] as const,
+    },
+    // 내 댓글
+    comments: {
+      all: () => [...queryKeys.myActivity.all, 'comments'] as const,
+      list: (filters?: Record<string, unknown>) =>
+        [...queryKeys.myActivity.comments.all(), 'list', filters] as const,
+      infinite: (filters?: Record<string, unknown>) =>
+        [...queryKeys.myActivity.comments.all(), 'infinite', filters] as const,
+    },
+    // 좋아요한 글
+    likes: {
+      all: () => [...queryKeys.myActivity.all, 'likes'] as const,
+      list: (filters?: Record<string, unknown>) =>
+        [...queryKeys.myActivity.likes.all(), 'list', filters] as const,
+      infinite: (filters?: Record<string, unknown>) =>
+        [...queryKeys.myActivity.likes.all(), 'infinite', filters] as const,
+    },
+    // 북마크
+    bookmarks: {
+      all: () => [...queryKeys.myActivity.all, 'bookmarks'] as const,
+      list: (filters?: Record<string, unknown>) =>
+        [...queryKeys.myActivity.bookmarks.all(), 'list', filters] as const,
+      infinite: (filters?: Record<string, unknown>) =>
+        [...queryKeys.myActivity.bookmarks.all(), 'infinite', filters] as const,
+    },
+  },
 };
