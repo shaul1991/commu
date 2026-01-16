@@ -45,6 +45,12 @@ interface MessageResponse {
   message: string;
 }
 
+// 다중 세션 관련 Response
+interface SessionsResponse {
+  sessions: string[];
+  count: number;
+}
+
 // Auth API
 export const authApi = {
   register: (data: RegisterRequest): Promise<ApiResponse<User>> =>
@@ -55,6 +61,13 @@ export const authApi = {
 
   logout: (): Promise<ApiResponse<MessageResponse>> =>
     apiClient.post('/auth/logout'),
+
+  // 다중 세션 관리
+  logoutAll: (): Promise<ApiResponse<MessageResponse>> =>
+    apiClient.post('/auth/logout-all'),
+
+  getActiveSessions: (): Promise<ApiResponse<SessionsResponse>> =>
+    apiClient.get('/auth/sessions'),
 
   refresh: (): Promise<ApiResponse<TokenResponse>> =>
     apiClient.post('/auth/refresh', undefined, { skipAuth: true }),
@@ -97,4 +110,5 @@ export type {
   VerifyEmailRequest,
   TokenResponse,
   MessageResponse,
+  SessionsResponse,
 };

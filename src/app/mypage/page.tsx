@@ -21,6 +21,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useRequireAuth, useAuth } from '@/hooks';
 import { useState } from 'react';
+import { SessionManager } from '@/components/molecules';
 
 interface MenuItem {
   icon: typeof User;
@@ -237,6 +238,14 @@ export default function MyPage() {
             );
           })}
         </div>
+      </section>
+
+      {/* Connected Devices Section */}
+      <section className="mb-8">
+        <h2 className="text-sm font-semibold text-[var(--text-tertiary)] uppercase tracking-wider mb-3">
+          보안
+        </h2>
+        <SessionManager />
       </section>
 
       {/* Account Section */}
